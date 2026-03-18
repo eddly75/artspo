@@ -995,98 +995,210 @@ var otSettings = {
   maxHours: 10  // 월 최대 인정 시간
 };
 
-/* ── Google Apps Script 연동 + localStorage 백업 ── */
-// ▼ Google Apps Script 배포 후 이 URL을 교체하세요
-var GAS_URL = 'YOUR_GAS_DEPLOY_URL_HERE';
+/* ══════════════════════════════════════════════════════════════
+   ▼▼▼ Google Apps Script URL 설정 — 배포 후 이 URL을 교체하세요 ▼▼▼
+   ═══════════════════════════════════════════════════════════════ */
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbzD7RgvtJkt_xKmSaWoxw6Wgy0yCYGhmlQIvWzTUrrh1eafZt5G1S6uzMbCmjSx9z3X/exec';
 
-var _saving = false;
+/* ── API 헬퍼 (GAS 기반) ── */
+function _gasGet(params) {
+  var qs = Object.keys(params).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
+  }).join('&');
+  return fetch(GAS_URL+'?'+qs).then(function(r){return r.json();});
+}
+function _gasPost(action, body) {
+  return fetch(GAS_URL+'?action='+action, {
+    method:'POST',
+    body: JSON.stringify(body)
+  }).then(function(r){return r.json();});
+}
 
+/* GET 래퍼들 — Flask apiGet/apiPost 인터페이스 호환 */
+function apiGet(path) {
+  // /api/users → getUsers
+  // /api/leaves?user_id=X → getLeaves
+  // /api/ot?user_id=X → getOT
+  // /api/notifications?user_id=X → getNotifications
+  var parts = path.split('?');
+  var route = parts[0].replace('/api/','');
+  var qp = {};
+  if (parts[1]) {
+    parts[1].split('&').forEach(function(kv){
+      var p=kv.split('='); qp[decodeURIComponent(p[0])]=decodeURIComponent(p[1]||'');
+    });
+  }
+  var actionMap = {
+    'users':'getUsers','leaves':'getLeaves','ot':'getOT','notifications':'getNotifications'
+  };
+  var action = actionMap[route] || 'get_'+route;
+  qp.action = action;
+  return _gasGet(qp);
+}
+function apiPost(path, body) {
+  // /api/login → login
+  // /api/leaves → addLeave
+  // /api/leaves/5/approve → approveLeave (id in body)
+  // /api/ot/5/approve → approveOT
+  // /api/users → addUser
+  // /api/notifications → addNotification
+  var route = path.replace('/api/','');
+  var action;
+  if (route === 'login')               action = 'login';
+  else if (route === 'leaves')         action = 'addLeave';
+  else if (route === 'ot')             action = 'addOT';
+  else if (route === 'users')          action = 'addUser';
+  else if (route === 'notifications')  action = 'addNotification';
+  else if (route === 'notifications/read') action = 'readNotifications';
+  else if (/leaves\/\d+\/approve/.test(route)) { body.id = route.split('/')[1]; action = 'approveLeave'; }
+  else if (/leaves\/\d+\/reject/.test(route))  { body.id = route.split('/')[1]; action = 'rejectLeave'; }
+  else if (/ot\/\d+\/approve/.test(route))     { body.id = route.split('/')[1]; action = 'approveOT'; }
+  else if (/ot\/\d+\/reject/.test(route))      { body.id = route.split('/')[1]; action = 'rejectOT'; }
+  else action = route.replace(/\//g,'_');
+  return _gasPost(action, body);
+}
+function apiPut(path, body) {
+  var route = path.replace('/api/','');
+  var action;
+  if (/users\/\d+/.test(route))        { body.id = route.split('/')[1]; action = 'updateUser'; }
+  else if (/ot\/\d+\/note/.test(route)){ body.id = route.split('/')[2]||route.split('/')[1]; action = 'updateOTNote'; }
+  else action = 'update_'+route.replace(/\//g,'_');
+  return _gasPost(action, body);
+}
+function apiDel(path) {
+  var route = path.replace('/api/','');
+  var action; var body = {};
+  if (/leaves\/\d+$/.test(route))  { body.id = route.split('/')[1]; action = 'deleteLeave'; }
+  else if (/users\/\d+$/.test(route)){ body.id = route.split('/')[1]; action = 'deleteUser'; }
+  else action = 'delete_'+route.replace(/\//g,'_');
+  return _gasPost(action, body);
+}
+
+function dbUserToEmp(u){
+  /* Flask users 레코드를 모바일 emps 포맷으로 변환 */
+  var roleMap = {'admin':'admin','user':'employee'};
+  return {
+    id: String(u.id),        // 모바일은 string id 사용
+    dbId: u.id,              // DB PK 보존
+    name: u.name,
+    join: u.join_date,
+    role: roleMap[u.role] || u.role,
+    total: u.total_leaves,
+    usedD: u.used_leaves,
+    usedH: 0,
+    pw: '',                  // 보안상 클라이언트에 저장 안 함
+    ccTotal: 3, ccUsed: 0,
+    slTotal: 60, slUsed: 0
+  };
+}
+
+function dbLeaveToLocal(r){
+  /* Flask leave_requests 레코드를 모바일 leaves 포맷으로 변환 */
+  /* 상태값 통일: Flask '대기중' → 모바일 '대기' */
+  var statusMap = {'대기중':'대기','승인':'승인','반려':'반려'};
+  return {
+    id: r.id,
+    empId: String(r.user_id),
+    empNm: r.user_name || '',
+    type: r.leave_type,
+    sd: r.start_date,
+    ed: r.end_date,
+    wd: r.days,
+    wh: 0,
+    rsn: r.reason || '',
+    status: statusMap[r.status] || r.status,
+    appAt: r.approved_at ? r.approved_at.slice(0,10) : '',
+    appBy: r.approved_by || '',
+    createdAt: r.created_at || ''
+  };
+}
+
+function dbOtToLocal(r){
+  /* Flask ot_requests 레코드를 모바일 otList 포맷으로 변환 */
+  var statusMap = {'대기중':'대기','승인':'승인','반려':'반려'};
+  return {
+    id: r.id,
+    empId: String(r.user_id),
+    empNm: r.user_name || '',
+    dt: r.work_date,
+    start: r.start_time,
+    end: r.end_time,
+    hours: r.hours,
+    desc: r.description || '',
+    note: r.note || '',
+    status: statusMap[r.status] || r.status,
+    apvAt: r.approved_at ? r.approved_at.slice(0,10) : '',
+    apvBy: r.approved_by || '',
+    createdAt: r.created_at || ''
+  };
+}
+
+/* ── saveData: 개별 변경은 각 액션에서 API 호출로 처리 (localStorage 캐시만) ── */
 function saveData(){
-  // localStorage 즉시 저장 (오프라인 백업)
+  /* 로컬 캐시 저장 (오프라인 fallback) */
   try{
     localStorage.setItem('guntae_emps',   JSON.stringify(emps));
     localStorage.setItem('guntae_leaves', JSON.stringify(leaves));
     localStorage.setItem('guntae_ot',     JSON.stringify(otList));
-    localStorage.setItem('guntae_lidx',   String(lidx));
-    localStorage.setItem('guntae_oidx',   String(oidx));
     localStorage.setItem('guntae_notifs', JSON.stringify(notifs));
     localStorage.setItem('guntae_nidx',   String(nidx));
     localStorage.setItem('guntae_otset',  JSON.stringify(otSettings));
   }catch(e){}
-  // GAS 서버 저장 (비동기)
-  if(!GAS_URL || GAS_URL==='YOUR_GAS_DEPLOY_URL_HERE') return;
-  if(_saving) return;
-  _saving=true;
-  fetch(GAS_URL,{method:'POST',body:JSON.stringify({action:'save',data:{emps:emps,leaves:leaves,otList:otList,notifs:notifs,meta:{lidx:lidx,oidx:oidx,nidx:nidx}}})})
-    .then(function(r){return r.json();})
-    .then(function(res){_saving=false; if(!res.ok) console.warn('GAS 저장 오류:',res.error);})
-    .catch(function(err){_saving=false; console.warn('GAS 저장 실패(로컬만 저장):',err);});
+  /* ※ 실제 저장은 각 액션(신청/승인/반려/추가/수정)에서 apiPost/apiPut 으로 개별 처리 */
 }
 
+/* ── loadData: Flask API 에서 전체 데이터 로드 ── */
 function loadData(){
-  _loadFromLocal(); // 즉시 로컬 복원
-  // GAS 서버에서 최신 데이터 비동기 로드
-  if(!GAS_URL || GAS_URL==='YOUR_GAS_DEPLOY_URL_HERE') return;
-  fetch(GAS_URL+'?t='+Date.now())
-    .then(function(r){return r.json();})
-    .then(function(res){
-      if(!res.ok||!res.data) return;
-      var d=res.data;
-      if(d.emps)   _mergeEmps(d.emps);
-      if(d.leaves) leaves=d.leaves;
-      if(d.otList) otList=d.otList;
-      if(d.notifs) notifs=d.notifs;
-      if(d.meta){lidx=d.meta.lidx||lidx; oidx=d.meta.oidx||oidx; nidx=d.meta.nidx||nidx;}
-      try{
-        localStorage.setItem('guntae_emps',   JSON.stringify(emps));
-        localStorage.setItem('guntae_leaves', JSON.stringify(leaves));
-        localStorage.setItem('guntae_ot',     JSON.stringify(otList));
-        localStorage.setItem('guntae_notifs', JSON.stringify(notifs));
-        localStorage.setItem('guntae_lidx',   String(lidx));
-        localStorage.setItem('guntae_oidx',   String(oidx));
-        localStorage.setItem('guntae_nidx',   String(nidx));
-      }catch(e){}
-      if(CU){ renderDash(); updND(); renderNI(); }
-    })
-    .catch(function(err){console.warn('GAS 로드 실패(로컬 사용):',err);});
+  /* 1) 로컬 캐시 즉시 복원 (화면 깜빡임 방지) */
+  _loadFromLocal();
+
+  /* 2) Flask API 에서 최신 데이터 비동기 로드 */
+  Promise.all([
+    apiGet('/api/users'),
+    apiGet('/api/leaves'),
+    apiGet('/api/ot')
+  ]).then(function(results){
+    var usersRes=results[0], leavesRes=results[1], otRes=results[2];
+
+    /* 직원 목록 갱신 */
+    if(usersRes.ok && usersRes.users){
+      emps = usersRes.users.map(dbUserToEmp);
+    }
+    /* 휴가 신청 갱신 */
+    if(leavesRes.ok && leavesRes.leaves){
+      leaves = leavesRes.leaves.map(dbLeaveToLocal);
+    }
+    /* 초과근무 갱신 */
+    if(otRes.ok && otRes.ot){
+      otList = otRes.ot.map(dbOtToLocal);
+    }
+
+    /* 로컬 캐시 업데이트 */
+    saveData();
+
+    /* UI 갱신 */
+    if(CU){
+      /* CU 를 최신 emps 에서 다시 찾아 동기화 */
+      var refreshed = emps.find(function(e){ return e.dbId===CU.dbId || e.name===CU.name; });
+      if(refreshed) CU = refreshed;
+      renderDash(); updND(); renderNI();
+    }
+  }).catch(function(err){
+    console.warn('Flask API 로드 실패 — 로컬 캐시 사용:', err);
+    toast('서버 연결 실패. 로컬 캐시로 표시합니다. (GAS_URL: '+GAS_URL+')', 'wt');
+  });
 }
 
 function _loadFromLocal(){
   try{
-    var se=localStorage.getItem('guntae_emps'); if(se) _mergeEmps(JSON.parse(se));
+    var se=localStorage.getItem('guntae_emps'); if(se) { var parsed=JSON.parse(se); if(parsed.length) emps=parsed; }
     var sl=localStorage.getItem('guntae_leaves'); if(sl) leaves=JSON.parse(sl);
     var so=localStorage.getItem('guntae_ot'); if(so) otList=JSON.parse(so);
     var sn=localStorage.getItem('guntae_notifs'); if(sn) notifs=JSON.parse(sn);
-    var sli=localStorage.getItem('guntae_lidx'); if(sli) lidx=parseInt(sli)||1;
-    var soi=localStorage.getItem('guntae_oidx'); if(soi) oidx=parseInt(soi)||1;
     var sni=localStorage.getItem('guntae_nidx'); if(sni) nidx=parseInt(sni)||1;
     var sos=localStorage.getItem('guntae_otset'); if(sos){ var ps=JSON.parse(sos); otSettings.maxHours=ps.maxHours||10; }
   }catch(e){}
 }
-
-function _mergeEmps(loaded){
-  emps.forEach(function(def){ if(!loaded.find(function(x){return x.id===def.id;})) loaded.push(def); });
-  for(var i=0;i<emps.length;i++){
-    var saved=loaded.find(function(x){return x.id===emps[i].id;});
-    if(saved){
-      emps[i]=saved;
-      if(emps[i].ccTotal===undefined) emps[i].ccTotal=3;
-      if(emps[i].ccUsed===undefined)  emps[i].ccUsed=0;
-      if(emps[i].slTotal===undefined) emps[i].slTotal=60;
-      if(emps[i].slUsed===undefined)  emps[i].slUsed=0;
-    }
-  }
-  loaded.forEach(function(s){
-    if(!emps.find(function(x){return x.id===s.id;})){
-      if(s.ccTotal===undefined) s.ccTotal=3;
-      if(s.ccUsed===undefined)  s.ccUsed=0;
-      if(s.slTotal===undefined) s.slTotal=60;
-      if(s.slUsed===undefined)  s.slUsed=0;
-      emps.push(s);
-    }
-  });
-}
-
 
 /* ── UTILS ── */
 function g(id){ return document.getElementById(id); }
@@ -1208,18 +1320,43 @@ window.pickNm=function(n){ g('inp-name').value=n; g('ndrop').style.display='none
 function doLogin(){
   var nm=g('inp-name').value.trim(), pw=g('inp-pw').value;
   g('ndrop').style.display='none';
-  if(!nm){ loginErr('\uc774\ub984\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694.'); return; }
-  if(!pw){ loginErr('\ube44\ubc00\ubc88\ud638\ub97c \uc785\ub825\ud574 \uc8fc\uc138\uc694.'); return; }
-  // 먼저 저장된 데이터 복원 (비밀번호 변경 반영 위해)
-  loadData();
-  var emp=getEmpByNm(nm);
-  if(!emp){ loginErr('\''+nm+'\' 은(는) 등록된 사용자가 아닙니다.'); return; }
-  if(emp.pw!==pw){ loginErr('비밀번호가 틀렸습니다.'); return; }
-  if(emp.inactive){ loginErr('비활성화된 계정입니다. 관리자에게 문의하세요.'); return; }
-  CU=emp;
-  g('login-wrap').style.display='none';
-  g('app').style.display='block';
-  initApp();
+  if(!nm){ loginErr('이름을 입력해 주세요.'); return; }
+  if(!pw){ loginErr('비밀번호를 입력해 주세요.'); return; }
+
+  /* Flask API 로그인 */
+  var btn=g('btn-login');
+  btn.disabled=true; btn.textContent='로그인 중...';
+
+  apiPost('/api/login',{name:nm,password:pw})
+    .then(function(res){
+      btn.disabled=false; btn.textContent='로그인';
+      if(!res.ok){ loginErr(res.error||'로그인 실패'); return; }
+      CU = dbUserToEmp(res.user);
+      Promise.all([
+        apiGet('/api/users'),
+        apiGet('/api/leaves'),
+        apiGet('/api/ot')
+      ]).then(function(results){
+        if(results[0].ok) emps = results[0].users.map(dbUserToEmp);
+        if(results[1].ok) leaves = results[1].leaves.map(dbLeaveToLocal);
+        if(results[2].ok) otList = results[2].ot.map(dbOtToLocal);
+        var refreshed=emps.find(function(e){ return e.dbId===CU.dbId; });
+        if(refreshed) CU=refreshed;
+        saveData();
+        g('login-wrap').style.display='none';
+        g('app').style.display='block';
+        initApp();
+      }).catch(function(){
+        _loadFromLocal();
+        var emp=getEmpByNm(nm);
+        if(emp){ CU=emp; g('login-wrap').style.display='none'; g('app').style.display='block'; initApp(); }
+        else { loginErr('데이터 로드 실패. 서버 연결을 확인하세요.'); }
+      });
+    })
+    .catch(function(){
+      btn.disabled=false; btn.textContent='로그인';
+      loginErr('서버 연결 실패. (' + GAS_URL + ')');
+    });
 }
 g('btn-login').addEventListener('click', doLogin);
 g('inp-name').addEventListener('keydown', function(e){ if(e.key==='Enter') g('inp-pw').focus(); });
@@ -1452,14 +1589,22 @@ g('btn-chpw').addEventListener('click', function(){ g('cpw-cur').value=''; g('cp
 g('btn-cpwok').addEventListener('click', function(){
   var cur=g('cpw-cur').value, nw=g('cpw-new').value, cf=g('cpw-cf').value, erl=g('cpw-err');
   erl.textContent='';
-  if(!cur){ erl.textContent='\ud604\uc7ac \ube44\ubc00\ubc88\ud638\ub97c \uc785\ub825\ud574 \uc8fc\uc138\uc694.'; return; }
-  if(CU.pw!==cur){ erl.textContent='\ud604\uc7ac \ube44\ubc00\ubc88\ud638\uac00 \ud2c0\ub838\uc2b5\ub2c8\ub2e4.'; return; }
-  if(nw.length<4){ erl.textContent='\uc0c8 \ube44\ubc00\ubc88\ud638\ub294 4\uc790 \uc774\uc0c1\uc774\uc5b4\uc57c \ud569\ub2c8\ub2e4.'; return; }
-  if(nw!==cf){ erl.textContent='\uc0c8 \ube44\ubc00\ubc88\ud638\uc640 \ud655\uc778\uc774 \ub2e4\ub985\ub2c8\ub2e4.'; return; }
-  if(cur===nw){ erl.textContent='\uc0c8 \ube44\ubc00\ubc88\ud638\uac00 \ud604\uc7ac\uc640 \ub3d9\uc77c\ud569\ub2c8\ub2e4.'; return; }
-  CU.pw=nw; var em=getEmpById(CU.id); if(em) em.pw=nw;
-  saveData();
-  closeM('mo-cpw'); toast('\ube44\ubc00\ubc88\ud638\uac00 \ubcc0\uacbd\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok');
+  if(!cur){ erl.textContent='현재 비밀번호를 입력해 주세요.'; return; }
+  if(nw.length<4){ erl.textContent='새 비밀번호는 4자 이상이어야 합니다.'; return; }
+  if(nw!==cf){ erl.textContent='새 비밀번호와 확인이 다릅니다.'; return; }
+  if(cur===nw){ erl.textContent='새 비밀번호가 현재와 동일합니다.'; return; }
+  /* 먼저 현재 비밀번호 서버 검증 후 변경 */
+  apiPost('/api/login',{name:CU.name,password:cur})
+    .then(function(chk){
+      if(!chk.ok){ erl.textContent='현재 비밀번호가 틀렸습니다.'; return; }
+      return apiPut('/api/users/'+CU.dbId,{password:nw});
+    })
+    .then(function(res){
+      if(!res||!res.ok){ erl.textContent=(res&&res.error)||'변경 실패'; return; }
+      closeM('mo-cpw');
+      toast('비밀번호가 변경되었습니다.','ok');
+    })
+    .catch(function(){ erl.textContent='서버 연결 오류'; });
 });
 
 /* ── NAVIGATION ── */
@@ -1610,57 +1755,52 @@ g('la-type').addEventListener('change', onTypeChg);
 
 g('btn-la').addEventListener('click', function(){
   var t=g('la-type').value, u=lvUnit(t), rsn=g('la-rsn').value.trim();
-  if(!rsn){ toast('\uc0ac\uc720\ub97c \uc785\ub825\ud574 \uc8fc\uc138\uc694.','wt'); return; }
+  if(!rsn){ toast('사유를 입력해 주세요.','wt'); return; }
   var sd='', ed='', wd=0, wh=0, st='', et='';
   if(u==='day'){
     sd=g('la-s').value; ed=g('la-e').value;
-    if(!sd||!ed){ toast('\ub0a0\uc9dc\ub97c \uc785\ub825\ud574 \uc8fc\uc138\uc694.','wt'); return; }
-    if(sd>ed){ toast('\uc885\ub8cc\uc77c\uc774 \uc2dc\uc791\uc77c\ubcf4\ub2e4 \ube60\ub985\ub2c8\ub2e4.','wt'); return; }
-    wd=wdays(sd,ed); if(wd===0){ toast('\uc120\ud0dd \uae30\uac04\uc5d0 \uadfc\ubb34\uc77c\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.','wt'); return; }
-    // 날짜 중복 체크 (반려 제외)
-    var dup=leaves.filter(function(r){
-      if(r.empId!==CU.id||r.status==='\ubc18\ub824') return false;
-      // 신청 기간과 기존 기간이 겹치는지 확인
-      return r.sd<=ed && (r.ed||r.sd)>=sd;
-    });
-    if(dup.length){ toast('\uc774\ubbf8 \uc2e0\uccad\ub41c \ud734\uac00\uc640 \ub0a0\uc9dc\uac00 \uc911\ubcf5\ub429\ub2c8\ub2e4. (' + fmtD(dup[0].sd) + ')','er'); return; }
+    if(!sd||!ed){ toast('날짜를 입력해 주세요.','wt'); return; }
+    if(sd>ed){ toast('종료일이 시작일보다 빠릅니다.','wt'); return; }
+    wd=wdays(sd,ed); if(wd===0){ toast('선택 기간에 근무일이 없습니다.','wt'); return; }
+    var dup=leaves.filter(function(r){ if(r.empId!==CU.id||r.status==='반려') return false; return r.sd<=ed && (r.ed||r.sd)>=sd; });
+    if(dup.length){ toast('이미 신청된 휴가와 날짜가 중복됩니다. ('+fmtD(dup[0].sd)+')','er'); return; }
   } else if(u==='half'){
     sd=g('la-hd').value; ed=sd; wd=0.5;
-    if(!sd){ toast('\ub0a0\uc9dc\ub97c \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.','wt'); return; }
-    if(isNW(sd)){ toast('\uc8fc\ub9d0\u00b7\uacf5\ud734\uc77c\uc740 \uc2e0\uccad\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.','wt'); return; }
-    // 반가 중복 체크 (같은 날 반가 2개 불가)
-    var dupH=leaves.filter(function(r){
-      if(r.empId!==CU.id||r.status==='\ubc18\ub824') return false;
-      return r.sd===sd;
-    });
-    if(dupH.length){ toast('\ud574\ub2f9 \ub0a0\uc9dc\uc5d0 \uc774\ubbf8 \ud734\uac00 \uc2e0\uccad\uc774 \uc788\uc2b5\ub2c8\ub2e4.','er'); return; }
+    if(!sd){ toast('날짜를 선택해 주세요.','wt'); return; }
+    if(isNW(sd)){ toast('주말·공휴일은 신청할 수 없습니다.','wt'); return; }
+    var dupH=leaves.filter(function(r){ if(r.empId!==CU.id||r.status==='반려') return false; return r.sd===sd; });
+    if(dupH.length){ toast('해당 날짜에 이미 휴가 신청이 있습니다.','er'); return; }
   } else {
     sd=g('la-td').value; ed=sd; st=g('la-ts').value; et=g('la-te').value;
-    if(!sd){ toast('\ub0a0\uc9dc\ub97c \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.','wt'); return; }
-    if(!st||!et){ toast('\uc2dc\uac04\uc744 \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.','wt'); return; }
-    if(st>=et){ toast('\uc885\ub8cc \uc2dc\uac04\uc774 \uc2dc\uc791\ubcf4\ub2e4 \ube60\ub985\ub2c8\ub2e4.','wt'); return; }
-    if(isNW(sd)){ toast('\uc8fc\ub9d0\u00b7\uacf5\ud734\uc77c\uc740 \uc2e0\uccad\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.','wt'); return; }
+    if(!sd){ toast('날짜를 선택해 주세요.','wt'); return; }
+    if(!st||!et){ toast('시간을 선택해 주세요.','wt'); return; }
+    if(st>=et){ toast('종료 시간이 시작보다 빠릅니다.','wt'); return; }
+    if(isNW(sd)){ toast('주말·공휴일은 신청할 수 없습니다.','wt'); return; }
     wh=parseInt(et)-parseInt(st);
-    // 외출/조퇴 시간대 중복 체크
     var stH=parseInt(st), etH=parseInt(et);
-    var dupT=leaves.filter(function(r){
-      if(r.empId!==CU.id||r.status==='\ubc18\ub824') return false;
-      if(r.sd!==sd) return false;
-      if(!r.st) return false; // 날짜 단위 휴가는 이미 날짜 중복으로 체크됨
-      var rsh=parseInt(r.st), reh=parseInt(r.et);
-      return stH<reh && etH>rsh; // 시간대 겹침
-    });
-    if(dupT.length){ toast('\ud574\ub2f9 \ub0a0\uc9dc \uc2dc\uac04\ub300\uc5d0 \uc774\ubbf8 \uc2e0\uccad\uc774 \uc788\uc2b5\ub2c8\ub2e4. ('+dupT[0].st+'~'+dupT[0].et+')','er'); return; }
+    var dupT=leaves.filter(function(r){ if(r.empId!==CU.id||r.status==='반려') return false; if(r.sd!==sd) return false; if(!r.st) return false; var rsh=parseInt(r.st),reh=parseInt(r.et); return stH<reh&&etH>rsh; });
+    if(dupT.length){ toast('해당 날짜 시간대에 이미 신청이 있습니다. ('+dupT[0].st+'~'+dupT[0].et+')','er'); return; }
   }
   var ri=remInfo(CU), need=wd*8+wh;
-  var dts=['\uc5f0\uac00','\uc624\uc804\ubc18\uac00','\uc624\ud6c4\ubc18\uac00','\uc678\ucd9c','\uc870\ud1f4'];
-  if(dts.indexOf(t)>-1 && need>ri.r8){ toast('\uc794\uc5ec \uc5f0\ucc28\uac00 \ubd80\uc871\ud569\ub2c8\ub2e4.','er'); return; }
-  leaves.push({id:lidx++,empId:CU.id,empNm:CU.name,type:t,sd:sd,ed:ed,wd:wd,wh:wh,st:st,et:et,rsn:rsn,note:g('la-note').value.trim(),status:'\ub300\uae30',appAt:todayS(),apvAt:null,rejR:null});
-  saveData();
-  var apvrs=emps.filter(function(e){return e.role==='admin'||e.role==='approver';});
-  apvrs.forEach(function(a){ addNotif(a.id,CU.name+'\ub2d8 \ud734\uac00 \uc2e0\uccad',t+' | '+fmtD(sd)+(ed&&ed!==sd?' ~ '+fmtD(ed):''+(st?' '+st+'~'+et:''))+' | '+fmtAmt(wd,wh)); });
-  toast(t+' \uc2e0\uccad\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok');
-  resetLA(); updPend(); goPage('lv-dash');
+  var dts=['연가','오전반가','오후반가','외출','조퇴'];
+  if(dts.indexOf(t)>-1 && need>ri.r8){ toast('잔여 연차가 부족합니다.','er'); return; }
+
+  /* Flask API 로 휴가 신청 전송 */
+  var btn=g('btn-la'); btn.disabled=true; btn.textContent='신청 중...';
+  apiPost('/api/leaves',{user_id:CU.dbId,start_date:sd,end_date:ed,leave_type:t,reason:rsn,days:wd})
+    .then(function(res){
+      btn.disabled=false; btn.textContent='신청 제출';
+      if(!res.ok){ toast(res.error||'신청 실패','er'); return; }
+      var newLeave=dbLeaveToLocal(res.leave);
+      newLeave.wh=wh; newLeave.st=st; newLeave.et=et;
+      leaves.push(newLeave);
+      saveData();
+      var apvrs=emps.filter(function(e){return e.role==='admin'||e.role==='approver';});
+      apvrs.forEach(function(a){ addNotif(a.id,CU.name+'님 휴가 신청',t+' | '+fmtD(sd)+(ed&&ed!==sd?' ~ '+fmtD(ed):''+(st?' '+st+'~'+et:''))+' | '+fmtAmt(wd,wh)); });
+      toast(t+' 신청이 완료되었습니다.','ok');
+      resetLA(); updPend(); goPage('lv-dash');
+    })
+    .catch(function(){ btn.disabled=false; btn.textContent='신청 제출'; toast('서버 연결 오류','er'); });
 });
 function resetLA(){ var td=todayS(); g('la-type').value='\uc5f0\uac00'; ['la-s','la-e','la-hd','la-td'].forEach(function(id){g(id).value=td;}); g('la-rsn').value=''; g('la-note').value=''; onTypeChg(); }
 g('btn-la-rst').addEventListener('click', resetLA);
@@ -1815,15 +1955,20 @@ g('btn-confirm-ok').addEventListener('click', function(){
   if(_cancelType === 'lv' && _cancelId !== null){
     var r = leaves.find(function(x){ return x.id === _cancelId; });
     if(r){
-      leaves = leaves.filter(function(x){ return x.id !== _cancelId; });
-      saveData(); updPend();
-      toast(r.type + ' \uc2e0\uccad\uc774 \ucde8\uc18c\ub418\uc5c8\uc2b5\ub2c8\ub2e4.', 'ok');
-      renderHM(); renderHY();
+      apiDel('/api/leaves/'+_cancelId)
+        .then(function(res){
+          if(!res.ok){ toast(res.error||'취소 실패','er'); return; }
+          leaves = leaves.filter(function(x){ return x.id !== _cancelId; });
+          saveData(); updPend();
+          toast(r.type + ' 신청이 취소되었습니다.', 'ok');
+          renderHM(); renderHY();
+        })
+        .catch(function(){ toast('서버 연결 오류','er'); });
     }
   } else if(_cancelType === 'ot' && _cancelId !== null){
     otList = otList.filter(function(x){ return x.id !== _cancelId; });
     saveData(); updPend();
-    toast('\ucd08\uacfc\uadfc\ubb34 \uc2e0\uccad\uc774 \ucde8\uc18c\ub418\uc5c8\uc2b5\ub2c8\ub2e4.', 'ok');
+    toast('초과근무 신청이 취소되었습니다.', 'ok');
     renderOH();
   }
   _cancelId = null; _cancelType = null;
@@ -1998,36 +2143,41 @@ g('ot-s').addEventListener('change',calcOT); g('ot-e').addEventListener('change'
 
 g('btn-ot').addEventListener('click',function(){
   var dt=g('ot-dt').value, s=g('ot-s').value, e=g('ot-e').value, desc=g('ot-desc').value.trim(), note=g('ot-note').value.trim();
-  if(!dt){toast('\ub0a0\uc9dc\ub97c \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.','wt');return;}
-  // 날짜 신청 가능 여부 재검증
+  if(!dt){toast('날짜를 선택해 주세요.','wt');return;}
   var chk=checkOTDate(dt);
   if(!chk.ok){toast(chk.msg,'er');return;}
-  if(!s||!e){toast('\uc2dc\uc791/\uc885\ub8cc \uc2dc\uac04\uc744 \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.','wt');return;}
+  if(!s||!e){toast('시작/종료 시간을 선택해 주세요.','wt');return;}
   var sh=parseHour(s), eh=parseHour(e);
-  if(isNaN(sh)||isNaN(eh)||eh<=sh){toast('\uc885\ub8cc \uc2dc\uac04\uc740 \uc2dc\uc791 \uc2dc\uac04\ubcf4\ub2e4 \ucee4\uc57c \ud569\ub2c8\ub2e4.','wt');return;}
-  // 날짜 유형에 따른 시간 범위 검증
+  if(isNaN(sh)||isNaN(eh)||eh<=sh){toast('종료 시간은 시작 시간보다 커야 합니다.','wt');return;}
   var isOff=isNW(dt);
   var minStart=isOff?7:18;
-  if(sh<minStart){
-    toast((isOff?'\uc8fc\ub9d0\u00b7\uacf5\ud734\uc77c\uc740 07:00\ubd80\ud130':'\ud3c9\uc77c\uc740 18:00\ubd80\ud130')+' \uc2e0\uccad \uac00\ub2a5\ud569\ub2c8\ub2e4.','wt'); return;
-  }
-  if(!desc){toast('\uadfc\ubb34 \ub0b4\uc5ed\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694.','wt');return;}
-  // 초과근무 시간대 중복 체크 (반려 제외)
+  if(sh<minStart){ toast((isOff?'주말·공휴일은 07:00부터':'평일은 18:00부터')+' 신청 가능합니다.','wt'); return; }
+  if(!desc){toast('근무 내역을 입력해 주세요.','wt');return;}
   var dupOT=otList.filter(function(r){
-    if(r.empId!==CU.id||r.status==='\ubc18\ub824') return false;
+    if(r.empId!==CU.id||r.status==='반려') return false;
     if(r.dt!==dt) return false;
     var rsh=parseHour(r.start), reh=parseHour(r.end);
     return sh<reh && eh>rsh;
   });
-  if(dupOT.length){ toast('\ud574\ub2f9 \uc2dc\uac04\ub300\uc5d0 \uc774\ubbf8 \uc2e0\uccad\ub41c \ucd08\uacfc\uadfc\ubb34\uac00 \uc788\uc2b5\ub2c8\ub2e4. ('+dupOT[0].start+'~'+dupOT[0].end+')','er'); return; }
+  if(dupOT.length){ toast('해당 시간대에 이미 신청된 초과근무가 있습니다. ('+dupOT[0].start+'~'+dupOT[0].end+')','er'); return; }
   var hours=eh-sh;
-  var dispEnd=e;
-  otList.push({id:oidx++,empId:CU.id,empNm:CU.name,dt:dt,start:s,end:dispEnd,hours:hours,desc:desc,note:note,status:'\ub300\uae30',appAt:todayS(),apvAt:null});
-  saveData();
-  var apvrs=emps.filter(function(ev){return ev.role==='admin'||ev.role==='approver';});
-  apvrs.forEach(function(a){addNotif(a.id,CU.name+'\ub2d8 \ucd08\uacfc\uadfc\ubb34 \uc2e0\uccad',fmtD(dt)+' '+s+'~'+dispEnd+' ('+hours+'\uc2dc\uac04)');});
-  toast('\ucd08\uacfc\uadfc\ubb34 \uc2e0\uccad\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok');
-  resetOT(); updPend();
+
+  /* Flask API 로 OT 신청 전송 */
+  var btn=g('btn-ot'); btn.disabled=true;
+  apiPost('/api/ot',{user_id:CU.dbId,work_date:dt,start_time:s,end_time:e,hours:hours,description:desc})
+    .then(function(res){
+      btn.disabled=false;
+      if(!res.ok){ toast(res.error||'신청 실패','er'); return; }
+      var newOT=dbOtToLocal(res.ot);
+      newOT.note=note;
+      otList.push(newOT);
+      saveData();
+      var apvrs=emps.filter(function(ev){return ev.role==='admin'||ev.role==='approver';});
+      apvrs.forEach(function(a){addNotif(a.id,CU.name+'님 초과근무 신청',fmtD(dt)+' '+s+'~'+e+' ('+hours+'시간)');});
+      toast('초과근무 신청이 완료되었습니다.','ok');
+      resetOT(); updPend();
+    })
+    .catch(function(){ btn.disabled=false; toast('서버 연결 오류','er'); });
 });
 function resetOT(){
   var td=todayS();
@@ -2208,35 +2358,56 @@ function renderAppr(){
 }
 window.apvLv=function(id){
   var r=leaves.find(function(x){return x.id===id;}); if(!r)return;
-  r.status='\uc2b9\uc778'; r.apvAt=todayS();
-  var emp=getEmpById(r.empId); if(emp){
-    var annualTypes=['\uc5f0\uac00','\uc624\uc804\ubc18\uac00','\uc624\ud6c4\ubc18\uac00','\uc678\ucd9c','\uc870\ud1f4'];
-    if(annualTypes.indexOf(r.type)>-1){
-      emp.usedD+=(r.wd||0); emp.usedH+=(r.wh||0);
-      while(emp.usedH>=8){emp.usedH-=8;emp.usedD++;}
-    } else if(r.type==='\uc790\ub140\ub3cc\ubd04'){
-      emp.ccUsed=(emp.ccUsed||0)+(r.wd||0);
-    } else if(r.type==='\ubcd1\uac00'){
-      emp.slUsed=(emp.slUsed||0)+(r.wd||0);
-    }
-  }
-  saveData();
-  addNotif(r.empId,'\ud734\uac00 \uc2b9\uc778',r.type+' '+fmtD(r.sd)+' \uc2b9\uc778\ub418\uc5c8\uc2b5\ub2c8\ub2e4.');
-  toast(r.empNm+'\ub2d8\uc758 '+r.type+' \uc2e0\uccad\uc744 \uc2b9\uc778\ud588\uc2b5\ub2c8\ub2e4.','ok'); renderAppr();
-};
+  apiPost('/api/leaves/'+id+'/approve',{approved_by:CU.name})
+    .then(function(res){
+      if(!res.ok){ toast(res.error||'승인 실패','er'); return; }
+      r.status='승인'; r.apvAt=todayS(); r.apvBy=CU.name;
+      /* 로컬 usedD 동기화 */
+      var emp=getEmpById(r.empId); if(emp){
+        var annualTypes=['연가','오전반가','오후반가','외출','조퇴'];
+        if(annualTypes.indexOf(r.type)>-1){ emp.usedD+=(r.wd||0); emp.usedH+=(r.wh||0); while(emp.usedH>=8){emp.usedH-=8;emp.usedD++;} }
+        else if(r.type==='자녀돌봄'){ emp.ccUsed=(emp.ccUsed||0)+(r.wd||0); }
+        else if(r.type==='병가'){ emp.slUsed=(emp.slUsed||0)+(r.wd||0); }
+      }
+      saveData();
+      addNotif(r.empId,'휴가 승인',r.type+' '+fmtD(r.sd)+' 승인되었습니다.');
+      toast(r.empNm+'님의 '+r.type+' 신청을 승인했습니다.','ok'); renderAppr();
+    })
+    .catch(function(){ toast('서버 연결 오류','er'); });
+}
 window.apvOT=function(id){
   var r=otList.find(function(x){return x.id===id;}); if(!r)return;
-  r.status='\uc2b9\uc778'; r.apvAt=todayS();
-  saveData();
-  addNotif(r.empId,'\ucd08\uacfc\uadfc\ubb34 \uc2b9\uc778',fmtD(r.dt)+' '+fmtH(r.hours)+' \uc2b9\uc778\ub418\uc5c8\uc2b5\ub2c8\ub2e4.');
-  toast(r.empNm+'\ub2d8\uc758 \ucd08\uacfc\uadfc\ubb34 \uc2e0\uccad\uc744 \uc2b9\uc778\ud588\uc2b5\ub2c8\ub2e4.','ok'); renderAppr();
-};
+  apiPost('/api/ot/'+id+'/approve',{approved_by:CU.name})
+    .then(function(res){
+      if(!res.ok){ toast(res.error||'승인 실패','er'); return; }
+      r.status='승인'; r.apvAt=todayS();
+      saveData();
+      addNotif(r.empId,'초과근무 승인',fmtD(r.dt)+' '+fmtH(r.hours)+' 승인되었습니다.');
+      toast(r.empNm+'님의 초과근무 신청을 승인했습니다.','ok'); renderAppr();
+    })
+    .catch(function(){ toast('서버 연결 오류','er'); });
+}
 window.openRej=function(id,tp){ rejTgt=id; rejType=tp; g('rej-rsn').value=''; openM('mo-rej'); };
 g('btn-rejok').addEventListener('click',function(){
-  var rsn=g('rej-rsn').value.trim(); if(!rsn){toast('\ubc18\ub824 \uc0ac\uc720\ub97c \uc785\ub825\ud574 \uc8fc\uc138\uc694.','wt');return;}
-  if(rejType==='lv'){ var r=leaves.find(function(x){return x.id===rejTgt;}); if(r){r.status='\ubc18\ub824';r.rejR=rsn;r.apvAt=todayS();saveData();addNotif(r.empId,'\ud734\uac00 \ubc18\ub824',r.type+' \uc2e0\uccad\uc774 \ubc18\ub824\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uc0ac\uc720: '+rsn);toast(r.empNm+'\ub2d8\uc758 \uc2e0\uccad\uc744 \ubc18\ub824\ud588\uc2b5\ub2c8\ub2e4.','inf');} }
-  else { var r2=otList.find(function(x){return x.id===rejTgt;}); if(r2){r2.status='\ubc18\ub824';r2.apvAt=todayS();saveData();addNotif(r2.empId,'\ucd08\uacfc\uadfc\ubb34 \ubc18\ub824',fmtD(r2.dt)+' \uc2e0\uccad\uc774 \ubc18\ub834\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uc0ac\uc720: '+rsn);toast(r2.empNm+'\ub2d8\uc758 \uc2e0\uccad\uc744 \ubc18\ub834\ud588\uc2b5\ub2c8\ub2e4.','inf');} }
-  closeM('mo-rej'); renderAppr();
+  var rsn=g('rej-rsn').value.trim(); if(!rsn){toast('반려 사유를 입력해 주세요.','wt');return;}
+  var apiPath = rejType==='lv' ? '/api/leaves/'+rejTgt+'/reject' : '/api/ot/'+rejTgt+'/reject';
+  apiPost(apiPath,{approved_by:CU.name, reason:rsn})
+    .then(function(res){
+      if(!res.ok){ toast(res.error||'반려 실패','er'); return; }
+      if(rejType==='lv'){
+        var r=leaves.find(function(x){return x.id===rejTgt;});
+        if(r){ r.status='반려'; r.rejR=rsn; r.apvAt=todayS();
+          saveData(); addNotif(r.empId,'휴가 반려',r.type+' 신청이 반려되었습니다. 사유: '+rsn);
+          toast(r.empNm+'님의 신청을 반려했습니다.','inf'); }
+      } else {
+        var r2=otList.find(function(x){return x.id===rejTgt;});
+        if(r2){ r2.status='반려'; r2.apvAt=todayS();
+          saveData(); addNotif(r2.empId,'초과근무 반려',fmtD(r2.dt)+' 신청이 반려되었습니다. 사유: '+rsn);
+          toast(r2.empNm+'님의 신청을 반려했습니다.','inf'); }
+      }
+      closeM('mo-rej'); renderAppr();
+    })
+    .catch(function(){ toast('서버 연결 오류','er'); });
 });
 
 /* ── ADMIN ── */
@@ -2308,45 +2479,59 @@ window.openEE=function(id){
 };
 g('btn-eeok').addEventListener('click',function(){
   var e=getEmpById(editId); if(!e)return;
-  e.join   = g('ee-jn').value || e.join;
-  e.total  = parseFloat(g('ee-dy').value);
-  if(isNaN(e.total)||e.total<0) e.total=0;
+  var newTotal=parseFloat(g('ee-dy').value); if(isNaN(newTotal)||newTotal<0) newTotal=0;
+  var newJoin=g('ee-jn').value || e.join;
+  var roleMap={'admin':'admin','approver':'user','employee':'user'};
+  var newRole=g('ee-rl').value;
+  var dbRole=roleMap[newRole]||'user';
+  var ccVal=g('ee-cc').value.trim();
+  var slVal=g('ee-sl').value.trim();
+  var rateVal=parseInt(g('ee-rate').value)||0;
 
-  var ccVal = g('ee-cc').value.trim();
-  var slVal = g('ee-sl').value.trim();
-  e.ccTotal = (ccVal!=='' && !isNaN(parseInt(ccVal))) ? parseInt(ccVal) : (e.ccTotal||3);
-  e.slTotal = (slVal!=='' && !isNaN(parseInt(slVal))) ? parseInt(slVal) : (e.slTotal||60);
-
-  var rateVal=parseInt(g('ee-rate').value);
-  e.otRate = (!isNaN(rateVal)&&rateVal>=0) ? rateVal : (e.otRate||0);
-
-  e.role = g('ee-rl').value;
-  saveData();
-  closeM('mo-eemp');
-  toast(e.name+'\ub2d8 \uc815\ubcf4\uac00 \uc218\uc815\ub418\uc5c8\uc2b5\ub2c8\ub2e4. (\uc790\ub140\ub3cc\ubd04 '+e.ccTotal+'\uc77c, \ubcd1\uac00 '+e.slTotal+'\uc77c)','ok');
-  renderEmpTbl();
+  apiPut('/api/users/'+e.dbId,{total_leaves:newTotal,join_date:newJoin,role:dbRole})
+    .then(function(res){
+      if(!res.ok){ toast(res.error||'수정 실패','er'); return; }
+      /* 로컬 동기화 */
+      e.join=newJoin; e.total=newTotal; e.role=newRole;
+      e.ccTotal=(ccVal!==''&&!isNaN(parseInt(ccVal)))?parseInt(ccVal):(e.ccTotal||3);
+      e.slTotal=(slVal!==''&&!isNaN(parseInt(slVal)))?parseInt(slVal):(e.slTotal||60);
+      e.otRate=rateVal;
+      saveData();
+      closeM('mo-eemp');
+      toast(e.name+'님 정보가 수정되었습니다.','ok');
+      renderEmpTbl();
+    })
+    .catch(function(){ toast('서버 연결 오류','er'); });
 });
-
 g('btn-addemp').addEventListener('click',function(){ g('ae-nm').value=''; g('ae-jn').value=todayS(); g('ae-dy').value=15; g('ae-rl').value='employee'; g('ae-rate').value=0; openM('mo-aemp'); });
 g('btn-aeok').addEventListener('click',function(){
-  var nm=g('ae-nm').value.trim(); if(!nm){toast('\uc774\ub984\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694.','wt');return;}
-  if(getEmpByNm(nm)){toast('\uc774\ubbf8 \uc874\uc7ac\ud558\ub294 \uc774\ub984\uc785\ub2c8\ub2e4.','wt');return;}
-  emps.push({
-    id:'emp_'+Date.now(), name:nm,
-    join:g('ae-jn').value||todayS(),
-    role:g('ae-rl').value,
-    total:parseFloat(g('ae-dy').value)||15,
-    usedD:0, usedH:0, pw:'1234',
-    ccTotal:parseInt(g('ae-cc').value)||3, ccUsed:0,
-    slTotal:parseInt(g('ae-sl').value)||60, slUsed:0,
-    otRate:parseInt(g('ae-rate').value)||0
-  });
-  saveData();
-  var eo='<option value="">\uc804\uccb4 \uc9c1\uc6d0</option>'+emps.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('');
-  g('al-emp').innerHTML=eo; g('ao-emp').innerHTML=eo;
-  closeM('mo-aemp'); toast(nm+'\ub2d8\uc774 \ucd94\uac00\ub418\uc5c8\uc2b5\ub2c8\ub2e4. (\ube44\ubc00\ubc88\ud638: 1234)','ok'); renderEmpTbl();
+  var nm=g('ae-nm').value.trim();
+  if(!nm){toast('이름을 입력해 주세요.','wt');return;}
+  if(getEmpByNm(nm)){toast('이미 존재하는 이름입니다.','wt');return;}
+  var newRole=g('ae-rl').value;
+  var dbRole=(newRole==='admin')?'admin':'user';
+  apiPost('/api/users',{
+    name:nm, password:'1234', role:dbRole,
+    join_date:g('ae-jn').value||todayS(),
+    total_leaves:parseFloat(g('ae-dy').value)||15
+  })
+  .then(function(res){
+    if(!res.ok){ toast(res.error||'추가 실패','er'); return; }
+    var newEmp=dbUserToEmp(res.user);
+    newEmp.role=newRole;
+    newEmp.ccTotal=parseInt(g('ae-cc').value)||3;
+    newEmp.slTotal=parseInt(g('ae-sl').value)||60;
+    newEmp.otRate=parseInt(g('ae-rate').value)||0;
+    emps.push(newEmp);
+    saveData();
+    var eo='<option value="">전체 직원</option>'+emps.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('');
+    g('al-emp').innerHTML=eo; g('ao-emp').innerHTML=eo;
+    closeM('mo-aemp');
+    toast(nm+'님이 추가되었습니다. (비밀번호: 1234)','ok');
+    renderEmpTbl();
+  })
+  .catch(function(){ toast('서버 연결 오류','er'); });
 });
-
 function renderAL(){
   var ef=g('al-emp').value, yr=parseInt(g('al-yr').value), mo=g('al-mo').value, st=g('al-st').value;
   var d=leaves.filter(function(r){ if(ef&&r.empId!==ef)return false; var dt=new Date(r.sd); if(dt.getFullYear()!==yr)return false; if(mo!==''&&dt.getMonth()!==parseInt(mo))return false; if(st&&r.status!==st)return false; return true; }).sort(function(a,b){return b.id-a.id;});
