@@ -2,7 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#1a2236">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>근태관리 시스템</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -144,6 +147,10 @@ tbody tr:last-child td{border-bottom:none;}
 .mof{padding:14px 22px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:7px;flex-shrink:0;}
 /* TOAST */
 #twrap{position:fixed;bottom:20px;right:20px;z-index:9000;display:flex;flex-direction:column;gap:7px;pointer-events:none;}
+@media(max-width:768px){
+  #twrap{bottom:auto;top:70px;left:12px;right:12px;}
+  .toast{max-width:100%;}
+}
 .toast{background:#fff;border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;box-shadow:var(--shlg);animation:ti .25s ease;pointer-events:all;display:flex;gap:10px;align-items:flex-start;max-width:320px;}
 @keyframes ti{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 .tok{border-left:4px solid var(--acc2);}.twt{border-left:4px solid var(--acc3);}.ter{border-left:4px solid var(--acc4);}.tinf{border-left:4px solid var(--acc);}
@@ -223,12 +230,19 @@ tbody tr:last-child td{border-bottom:none;}
 .hbg.on span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
 
 /* ── 사이드바 오버레이 ── */
-.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;backdrop-filter:blur(2px);}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;backdrop-filter:blur(2px);}
 .sb-overlay.on{display:block;}
 
-/* ── 반응형 ── */
+/* ── iOS input 자동줌 방지 ── */
 @media(max-width:768px){
-  :root{--sw:260px;}
+  input, select, textarea { font-size:16px !important; }
+  .lbtn{padding:15px;font-size:1rem;}
+  .nopt{padding:13px 14px;}
+  /* 로그인 화면 여백 */
+  #login-wrap{padding:16px;}
+  .lcard{width:100%;max-width:100%;}
+}
+  :root{--sw:280px;}
 
   /* 햄버거 표시 */
   .hbg{display:flex;}
@@ -241,82 +255,115 @@ tbody tr:last-child td{border-bottom:none;}
   .main{margin-left:0;}
 
   /* 탑바 조정 */
-  .topbar{padding:0 14px;}
+  .topbar{padding:0 14px;height:54px;}
   .tbl .pt{font-size:.88rem;}
   .tbl .bc{font-size:.68rem;}
 
+  /* 탑바 오른쪽 pill에서 이름 숨기기 */
+  .upill span{display:none;}
+  .upill{padding:4px;}
+
   /* 컨텐츠 패딩 축소 */
-  .content{padding:14px 12px;}
+  .content{padding:12px 10px;}
 
   /* 대시보드 그리드 1열 */
   .dg{grid-template-columns:1fr;}
 
-  /* 통계 카드 최소 너비 축소 */
-  .stats{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;}
-  .scv{font-size:1.4rem;}
+  /* 통계 카드 2열 고정 */
+  .stats{grid-template-columns:1fr 1fr;gap:8px;}
+  .sc{padding:12px 14px;}
+  .scico{width:30px;height:30px;font-size:13px;margin-bottom:6px;}
+  .scv{font-size:1.35rem;}
+  .scl{font-size:.68rem;}
 
   /* 폼 2열 → 1열 */
   .fr{grid-template-columns:1fr;}
 
-  /* 테이블 가로 스크롤 */
+  /* 테이블 가로 스크롤 – 가로로 scroll 되도록 */
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  tbody td,thead th{padding:8px 10px;font-size:.78rem;}
+  .tw table{min-width:480px;}
+  tbody td,thead th{padding:8px 10px;font-size:.78rem;white-space:nowrap;}
 
-  /* 모달 전체 너비 */
-  .mo,.mosm{max-width:100%;margin:0;border-radius:14px 14px 0 0;position:fixed;bottom:0;left:0;right:0;max-height:90vh;}
+  /* 모달 바텀시트 스타일 */
   .mob{align-items:flex-end;padding:0;}
+  .mo,.mosm{
+    max-width:100%;margin:0;
+    border-radius:20px 20px 0 0;
+    position:fixed;bottom:0;left:0;right:0;
+    max-height:92vh;
+  }
+  /* 바텀시트 핸들 */
+  .moh::before{
+    content:'';display:block;
+    width:36px;height:4px;
+    background:#e2e8f0;border-radius:2px;
+    position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  }
+  .moh{position:relative;padding-top:20px;}
 
   /* 달력 셀 축소 */
-  .cald{min-height:52px;font-size:.68rem;}
-  .dn{font-size:.68rem;}
-  .de{font-size:.55rem;padding:1px 3px;}
+  .cald{min-height:48px;font-size:.64rem;padding:3px;}
+  .dn{font-size:.65rem;}
+  .de{font-size:.52rem;padding:1px 2px;}
+  .calgrid{gap:2px;}
 
-  /* 버튼 터치 영역 확보 */
-  .btn{padding:9px 14px;font-size:.85rem;}
-  .bxs{padding:6px 10px;font-size:.76rem;}
-  .bsm{padding:7px 12px;}
+  /* 버튼 터치 영역 확보 (최소 44px) */
+  .btn{padding:10px 16px;font-size:.85rem;min-height:40px;}
+  .bxs{padding:7px 11px;font-size:.76rem;min-height:34px;}
+  .bsm{padding:8px 13px;min-height:36px;}
 
   /* 가이드 박스 */
-  .guide{font-size:.78rem;}
+  .guide{font-size:.78rem;padding:10px 13px;}
   .guide li{font-size:.74rem;}
 
-  /* 사이드바 아이템 터치 영역 */
-  .sbi{padding:12px 18px;font-size:.9rem;}
-  .sfbtn{padding:8px 0;font-size:.85rem;}
+  /* 사이드바 아이템 터치 영역 (최소 44px) */
+  .sbi{padding:13px 18px;font-size:.9rem;}
+  .sfbtn{padding:10px 0;font-size:.85rem;}
 
   /* 알림 수신함 */
-  .ni{width:100%;right:0;top:58px;border-radius:0 0 12px 12px;}
+  .ni{width:calc(100vw - 16px);right:8px;top:62px;border-radius:12px;}
 
   /* 섹션헤더 */
-  .sh{flex-direction:column;gap:10px;}
+  .sh{flex-direction:column;gap:8px;align-items:flex-start;}
 
-  /* 필터 바 */
-  .sh ~ div[style*="display:flex"]{flex-wrap:wrap;}
-
-  /* 탭 폰트 */
-  .tab{padding:8px 12px;font-size:.8rem;}
+  /* 탭 스크롤 */
+  .tbar{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px;}
+  .tbar::-webkit-scrollbar{height:0;}
+  .tab{padding:9px 14px;font-size:.8rem;white-space:nowrap;flex-shrink:0;}
 
   /* 로그인 카드 */
-  .lcard{padding:32px 22px;}
+  .lcard{padding:28px 20px;}
+  .llogo h1{font-size:1.2rem;}
 
   /* calc box */
-  .cbox{gap:12px;}
-  .ci strong{font-size:.95rem;}
+  .cbox{gap:10px;padding:10px 12px;}
+  .ci strong{font-size:.92rem;}
+
+  /* 카드 패딩 */
+  .card{margin-bottom:10px;}
+  .ch{padding:12px 14px;}
+  .cb{padding:14px;}
+
+  /* 페이지 제목 */
+  .sht{font-size:.9rem;}
+
+  /* 필터 셀렉트 wrap */
+  .sh + div{flex-wrap:wrap;gap:6px !important;}
+  select.fc{font-size:.82rem;padding:7px 10px;}
+
+  /* 연도별 내역 바 */
+  .yrnm{width:60px;font-size:.78rem;}
+  .yrnum{font-size:.68rem;min-width:55px;}
 }
 
 @media(max-width:400px){
+  :root{--sw:260px;}
   .stats{grid-template-columns:1fr 1fr;}
-  .scv{font-size:1.2rem;}
+  .scv{font-size:1.15rem;}
   .tbl .pt{font-size:.82rem;}
+  .content{padding:10px 8px;}
+  .btn{padding:9px 12px;font-size:.82rem;}
 }
-
-.hamburger{display:none;font-size:22px;cursor:pointer;margin-right:10px}
-@media(max-width:768px){
-  .sb{position:fixed;left:0;top:0;height:100%;transform:translateX(-100%);transition:transform .3s;z-index:1000}
-  .sb.open{transform:translateX(0)}
-  .hamburger{display:block}
-}
-
 </style>
 </head>
 <body>
@@ -351,8 +398,7 @@ tbody tr:last-child td{border-bottom:none;}
 <!-- APP -->
 <div id="app">
 <div class="layout">
-<div class="hamburger" id="hamburger">☰</div>
-<aside class="sb">
+<aside class="sb" id="sb">
   <div class="sbh">
     <div class="sblogo"><div class="ico">&#128197;</div><span>근태관리</span></div>
     <div class="sbusr">
@@ -386,6 +432,7 @@ tbody tr:last-child td{border-bottom:none;}
   </nav>
   <div class="sbfoot">
     <div class="sfbtn" id="btn-chpw">&#128273; 비밀번호 변경</div>
+    <div class="sfbtn" id="btn-reset-data" style="margin-top:6px;display:none;color:#ef4444;">&#128465; 테스트 데이터 초기화</div>
     <div class="sfbtn" id="btn-logout" style="margin-top:6px;">&#128682; 로그아웃</div>
   </div>
 </aside>
@@ -573,20 +620,24 @@ tbody tr:last-child td{border-bottom:none;}
 
     <!-- 근무시간 확인 -->
     <div class="page" id="p-ot-hist">
-      <div class="guide"><h4>&#128161; 근무시간 확인</h4><ul>
-        <li>월별 초과근무 세부 내역을 확인합니다.</li>
-        <li id="oh-adm-guide" style="display:none;"><strong>관리자</strong>: 직원을 선택해 조회하고, <strong>초과근무 시간 확인</strong>란에 인정 시간을 입력하세요. (형식: H:MM, 최대 4:00)</li>
+      <div class="guide"><h4>&#9200; 근무시간 확인</h4><ul>
+        <li>내 월별 초과근무 내역과 수당 예상액을 확인합니다.</li>
+        <li>인정시간은 관리자가 확인 후 입력합니다.</li>
       </ul></div>
-      <div class="sh"><div class="sht">초과근무 월별 내역</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <select class="fc" id="oh-emp" style="width:100px;display:none;"></select>
+
+      <div class="sh" style="align-items:center;margin-bottom:14px;">
+        <div class="sht">초과근무 월별 내역</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
           <select class="fc" id="oh-yr" style="width:88px;"></select>
           <select class="fc" id="oh-mo" style="width:76px;"></select>
         </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;" id="oh-sum"></div>
+
+      <div id="oh-panel" style="margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="oh-sum"></div>
+
       <div class="card"><div class="tw"><table>
-        <thead><tr><th>근무일</th><th>시작</th><th>종료</th><th>시간</th><th>근무내역</th><th>초과근무 시간 확인</th><th>상태</th></tr></thead>
+        <thead><tr><th>근무일</th><th>시작</th><th>종료</th><th>시간</th><th>근무내역</th><th>인정시간</th><th>상태</th></tr></thead>
         <tbody id="oh-tb"></tbody>
       </table></div></div>
     </div>
@@ -614,9 +665,18 @@ tbody tr:last-child td{border-bottom:none;}
 
     <!-- 관리자 - 직원 관리 -->
     <div class="page" id="p-adm-emp">
-      <div class="sh"><div><div class="sht">직원 관리</div><div class="shs">직원 정보&middot;연차 배정&middot;권한 관리</div></div><button class="btn bp" id="btn-addemp">직원 추가</button></div>
+      <div class="sh">
+        <div>
+          <div class="sht">직원 관리</div>
+          <div class="shs">직원 정보&middot;연차 배정&middot;권한&middot;계정 활성화 관리</div>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center;">
+          <span id="inactive-badge" style="display:none;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;"></span>
+          <button class="btn bp" id="btn-addemp">직원 추가</button>
+        </div>
+      </div>
       <div class="card"><div class="tw"><table>
-        <thead><tr><th>이름</th><th>입사일</th><th>권한</th><th>연차배정</th><th>사용</th><th>잔여</th><th>자녀돌봄</th><th>병가</th><th>관리</th></tr></thead>
+        <thead><tr><th>이름</th><th>입사일</th><th>권한</th><th>연차배정</th><th>사용</th><th>잔여</th><th>자녀돌봄</th><th>병가</th><th>초과근무 단가</th><th>관리</th></tr></thead>
         <tbody id="emp-tb"></tbody>
       </table></div></div>
     </div>
@@ -638,7 +698,17 @@ tbody tr:last-child td{border-bottom:none;}
 
     <!-- 관리자 - 초과근무 내역 -->
     <div class="page" id="p-adm-ot">
-      <div class="sh"><div><div class="sht">초과근무 전체 내역</div><div class="shs">전 직원 초과근무 조회</div></div><button class="btn bok" id="btn-exot">엑셀 다운로드</button></div>
+      <div class="guide"><h4>&#128161; 초과근무 전체 내역</h4><ul>
+        <li>직원별 초과근무를 조회하고, <strong>인정시간</strong>을 직접 입력합니다. (형식: H:MM, 예: 2:30)</li>
+        <li>인정시간 저장 후 직원의 수당 예상액이 자동 계산됩니다.</li>
+      </ul></div>
+      <div class="sh" style="align-items:center;margin-bottom:14px;">
+        <div><div class="sht">초과근무 전체 내역</div><div class="shs">전 직원 초과근무 조회 및 인정시간 입력</div></div>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+          <button class="btn bs bsm" id="btn-ot-settings">&#9881; 수당 설정</button>
+          <button class="btn bok bsm" id="btn-exot">CSV 다운로드</button>
+        </div>
+      </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
         <select class="fc" id="ao-emp" style="width:100px;"></select>
         <select class="fc" id="ao-yr" style="width:88px;"></select>
@@ -646,7 +716,7 @@ tbody tr:last-child td{border-bottom:none;}
       </div>
       <div class="stats" id="ao-stats" style="margin-bottom:14px;"></div>
       <div class="card"><div class="tw"><table>
-        <thead><tr><th>직원</th><th>근무일</th><th>시작</th><th>종료</th><th>시간</th><th>근무내역</th><th>상태</th><th>처리</th></tr></thead>
+        <thead><tr><th>직원</th><th>근무일</th><th>시작</th><th>종료</th><th>시간</th><th>근무내역</th><th>인정시간 입력</th><th>상태</th><th>처리</th></tr></thead>
         <tbody id="ao-tb"></tbody>
       </table></div></div>
     </div>
@@ -664,6 +734,139 @@ tbody tr:last-child td{border-bottom:none;}
 
 <!-- Toast -->
 <div id="twrap"></div>
+
+<!-- Modal: 데이터 초기화 -->
+<div class="mob" id="mo-reset">
+  <div class="mo" style="max-width:560px;">
+    <div class="moh"><div class="mot" style="color:var(--acc4);">&#128465; 데이터 초기화</div><button class="mox" data-close="mo-reset">&#10005;</button></div>
+    <div class="mob2">
+      <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.83rem;color:var(--txt2);line-height:1.8;">
+        <strong style="color:var(--acc4);">&#9888;&#65039; 되돌릴 수 없습니다.</strong> 선택 범위의 데이터가 <strong>영구 삭제</strong>됩니다.
+      </div>
+
+      <!-- ── 휴가 신청내역 ── -->
+      <div style="border:1.5px solid var(--bdr);border-radius:10px;margin-bottom:10px;overflow:hidden;">
+        <label style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;background:var(--surf2);">
+          <input type="checkbox" id="chk-lv" style="width:16px;height:16px;accent-color:var(--acc4);">
+          <div>
+            <div style="font-weight:700;font-size:.88rem;">&#127958; 휴가 신청내역</div>
+            <div style="font-size:.74rem;color:var(--txt3);">직원별 사용일수도 함께 초기화</div>
+          </div>
+        </label>
+        <div id="rst-lv-range" style="display:none;padding:10px 14px;border-top:1px solid var(--bdr);background:#fff;">
+          <div style="font-size:.76rem;font-weight:600;color:var(--txt2);margin-bottom:8px;">삭제 범위</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="lv-range" value="all" id="lv-range-all" checked style="accent-color:var(--acc4);"> 전체
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="lv-range" value="year" id="lv-range-year" style="accent-color:var(--acc4);"> 특정 연도
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="lv-range" value="month" id="lv-range-month" style="accent-color:var(--acc4);"> 특정 월
+            </label>
+          </div>
+          <div id="lv-yr-wrap" style="display:none;margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+            <select class="fc" id="rst-lv-yr" style="width:96px;font-size:.83rem;padding:6px 10px;"></select>
+            <select class="fc" id="rst-lv-mo" style="width:80px;font-size:.83rem;padding:6px 10px;display:none;"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 초과근무 신청내역 ── -->
+      <div style="border:1.5px solid var(--bdr);border-radius:10px;margin-bottom:10px;overflow:hidden;">
+        <label style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;background:var(--surf2);">
+          <input type="checkbox" id="chk-ot" style="width:16px;height:16px;accent-color:var(--acc4);">
+          <div>
+            <div style="font-weight:700;font-size:.88rem;">&#9200; 초과근무 신청내역</div>
+            <div style="font-size:.74rem;color:var(--txt3);">인정시간 포함 초과근무 기록 삭제</div>
+          </div>
+        </label>
+        <div id="rst-ot-range" style="display:none;padding:10px 14px;border-top:1px solid var(--bdr);background:#fff;">
+          <div style="font-size:.76rem;font-weight:600;color:var(--txt2);margin-bottom:8px;">삭제 범위</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="ot-range" value="all" id="ot-range-all" checked style="accent-color:var(--acc4);"> 전체
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="ot-range" value="year" id="ot-range-year" style="accent-color:var(--acc4);"> 특정 연도
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="ot-range" value="month" id="ot-range-month" style="accent-color:var(--acc4);"> 특정 월
+            </label>
+          </div>
+          <div id="ot-yr-wrap" style="display:none;margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+            <select class="fc" id="rst-ot-yr" style="width:96px;font-size:.83rem;padding:6px 10px;"></select>
+            <select class="fc" id="rst-ot-mo" style="width:80px;font-size:.83rem;padding:6px 10px;display:none;"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 기타 옵션 ── -->
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--bdr);border-radius:9px;cursor:pointer;">
+          <input type="checkbox" id="chk-nt" style="width:16px;height:16px;accent-color:var(--acc4);">
+          <div>
+            <div style="font-weight:600;font-size:.86rem;">&#128276; 알림 내역 삭제</div>
+            <div style="font-size:.73rem;color:var(--txt3);">모든 알림 메시지 초기화</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--bdr);border-radius:9px;cursor:pointer;">
+          <input type="checkbox" id="chk-pw" style="width:16px;height:16px;accent-color:var(--acc4);">
+          <div>
+            <div style="font-weight:600;font-size:.86rem;">&#128273; 전 직원 비밀번호 → 1234</div>
+            <div style="font-size:.73rem;color:var(--txt3);">모든 직원 비밀번호 초기화</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #fecaca;border-radius:9px;cursor:pointer;background:#fff5f5;">
+          <input type="checkbox" id="chk-all" style="width:16px;height:16px;accent-color:var(--acc4);">
+          <div>
+            <div style="font-weight:700;font-size:.86rem;color:var(--acc4);">&#128465; 전체 완전 초기화 (직원 포함)</div>
+            <div style="font-size:.73rem;color:var(--txt3);">위 전부 + 직원 목록 기본값 복원 + 자동 로그아웃</div>
+          </div>
+        </label>
+      </div>
+
+      <div style="font-size:.82rem;font-weight:700;color:var(--txt2);margin-bottom:6px;">확인 문구 입력</div>
+      <input type="text" class="fc" id="rst-confirm-txt" placeholder="&quot;초기화&quot; 라고 입력하세요" autocomplete="off">
+      <div style="font-size:.73rem;color:var(--txt3);margin-top:4px;">실수 방지를 위해 확인 문구 입력 필수</div>
+    </div>
+    <div class="mof">
+      <button class="btn bs" data-close="mo-reset">취소</button>
+      <button class="btn bng" id="btn-reset-ok" style="opacity:.5;" disabled>&#128465; 초기화 실행</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 초과근무 설정 (관리자) -->
+<div class="mob" id="mo-otset">
+  <div class="mo mosm">
+    <div class="moh"><div class="mot">&#9881; 초과근무 설정</div><button class="mox" data-close="mo-otset">&#10005;</button></div>
+    <div class="mob2">
+      <div class="guide" style="margin-bottom:16px;">
+        <h4>&#128161; 설정 안내</h4>
+        <ul>
+          <li>월 최대 인정 시간은 전체 직원에게 동일하게 적용됩니다.</li>
+          <li>개인별 수당 단가는 <strong>직원 관리 → 수정</strong>에서 각각 입력하세요.</li>
+          <li>수당 예상액 = min(인정시간, 최대시간) × 개인 단가</li>
+        </ul>
+      </div>
+      <div class="fg">
+        <label class="fl">월 최대 인정 시간 <span class="rq">*</span></label>
+        <div style="position:relative;">
+          <input type="number" class="fc" id="ots-max" placeholder="10" min="1" max="100" step="1" style="padding-right:32px;">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--txt3);pointer-events:none;">시간</span>
+        </div>
+        <div class="fh">기본값: 10시간. 초과분은 수당 계산에서 제외됩니다.</div>
+      </div>
+      <div id="ots-preview" style="background:linear-gradient(135deg,#f0f4ff,#e8f4ff);border:1px solid #c7d7ff;border-radius:10px;padding:13px 16px;margin-top:4px;">
+        <div style="font-size:.74rem;font-weight:700;color:var(--acc);margin-bottom:6px;">&#128204; 현재 설정</div>
+        <div style="font-size:.78rem;color:var(--txt2);">월 최대 인정 시간<br><strong id="ots-prev-max" style="font-family:'DM Mono',monospace;color:var(--txt);font-size:1.1rem;">10시간</strong></div>
+      </div>
+    </div>
+    <div class="mof"><button class="btn bs" data-close="mo-otset">취소</button><button class="btn bp" id="btn-otset-ok">&#128190; 저장</button></div>
+  </div>
+</div>
 
 <!-- Modal: 반려 사유 -->
 <div class="mob" id="mo-rej">
@@ -722,6 +925,14 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="fg"><label class="fl">권한</label>
         <select class="fc" id="ee-rl"><option value="employee">일반 직원</option><option value="approver">승인자</option><option value="admin">관리자</option></select>
       </div>
+      <div class="fg">
+        <label class="fl">초과근무 시간당 수당 단가 <span style="font-size:.7rem;color:var(--acc)">개인별</span></label>
+        <div style="position:relative;">
+          <input type="number" class="fc" id="ee-rate" min="0" step="100" placeholder="0" style="padding-right:28px;">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--txt3);pointer-events:none;">원</span>
+        </div>
+        <div class="fh">시간당 초과근무 수당 단가. 0이면 미설정.</div>
+      </div>
     </div>
     <div class="mof"><button class="btn bs" data-close="mo-eemp">취소</button><button class="btn bp" id="btn-eeok">저장</button></div>
   </div>
@@ -743,6 +954,14 @@ tbody tr:last-child td{border-bottom:none;}
       </div>
       <div class="fg"><label class="fl">권한</label>
         <select class="fc" id="ae-rl"><option value="employee">일반 직원</option><option value="approver">승인자</option><option value="admin">관리자</option></select>
+      </div>
+      <div class="fg">
+        <label class="fl">초과근무 시간당 수당 단가 <span style="font-size:.7rem;color:var(--acc)">개인별</span></label>
+        <div style="position:relative;">
+          <input type="number" class="fc" id="ae-rate" min="0" step="100" placeholder="0" style="padding-right:28px;">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--txt3);pointer-events:none;">원</span>
+        </div>
+        <div class="fh">나중에 직원 수정에서 변경 가능</div>
       </div>
     </div>
     <div class="mof"><button class="btn bs" data-close="mo-aemp">취소</button><button class="btn bp" id="btn-aeok">추가</button></div>
@@ -770,6 +989,12 @@ var leaves=[], otList=[], notifs=[];
 var lidx=1, oidx=1, nidx=1;
 var CU=null, calY, calM, rejTgt=null, rejType=null, editId=null;
 
+/* ── 초과근무 설정 (관리자 입력) ── */
+var otSettings = {
+  rate: 0,      // 시간당 단가 (원)
+  maxHours: 10  // 월 최대 인정 시간
+};
+
 /* ── Google Apps Script 연동 + localStorage 백업 ── */
 // ▼ Google Apps Script 배포 후 이 URL을 교체하세요
 var GAS_URL = 'YOUR_GAS_DEPLOY_URL_HERE';
@@ -786,6 +1011,7 @@ function saveData(){
     localStorage.setItem('guntae_oidx',   String(oidx));
     localStorage.setItem('guntae_notifs', JSON.stringify(notifs));
     localStorage.setItem('guntae_nidx',   String(nidx));
+    localStorage.setItem('guntae_otset',  JSON.stringify(otSettings));
   }catch(e){}
   // GAS 서버 저장 (비동기)
   if(!GAS_URL || GAS_URL==='YOUR_GAS_DEPLOY_URL_HERE') return;
@@ -834,6 +1060,7 @@ function _loadFromLocal(){
     var sli=localStorage.getItem('guntae_lidx'); if(sli) lidx=parseInt(sli)||1;
     var soi=localStorage.getItem('guntae_oidx'); if(soi) oidx=parseInt(soi)||1;
     var sni=localStorage.getItem('guntae_nidx'); if(sni) nidx=parseInt(sni)||1;
+    var sos=localStorage.getItem('guntae_otset'); if(sos){ var ps=JSON.parse(sos); otSettings.maxHours=ps.maxHours||10; }
   }catch(e){}
 }
 
@@ -967,10 +1194,12 @@ g('inp-name').addEventListener('input', function(){
   var match=emps.filter(function(e){ return e.name.indexOf(v)>-1; });
   if(!match.length){ drop.style.display='none'; return; }
   drop.innerHTML=match.map(function(e){
-    var rl=e.role==='admin'?'\uad00\ub9ac\uc790':e.role==='approver'?'\uc2b9\uc778\uc790':'\uc9c1\uc6d0';
-    return '<div class="nopt" onclick="pickNm(\''+e.name+'\')">'
-      +'<div style="width:28px;height:28px;border-radius:50%;background:'+avc(e.name)+';display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;">'+e.name[0]+'</div>'
-      +'<div><div style="font-weight:600;">'+e.name+'</div><div style="font-size:.7rem;color:var(--txt3);">'+rl+'</div></div></div>';
+    var rl=e.role==='admin'?'관리자':e.role==='approver'?'승인자':'직원';
+    var inactiveTag=e.inactive?'<span style="font-size:.64rem;color:var(--acc4);font-weight:700;margin-left:4px;">[비활성]</span>':'';
+    var avBg=e.inactive?'#94a3b8':avc(e.name);
+    return '<div class="nopt" style="'+(e.inactive?'opacity:.55;':'')+'" onclick="pickNm(\''+e.name+'\')">'
+      +'<div style="width:28px;height:28px;border-radius:50%;background:'+avBg+';display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;">'+e.name[0]+'</div>'
+      +'<div><div style="font-weight:600;">'+e.name+inactiveTag+'</div><div style="font-size:.7rem;color:var(--txt3);">'+rl+'</div></div></div>';
   }).join('');
   drop.style.display='block';
 });
@@ -984,8 +1213,9 @@ function doLogin(){
   // 먼저 저장된 데이터 복원 (비밀번호 변경 반영 위해)
   loadData();
   var emp=getEmpByNm(nm);
-  if(!emp){ loginErr('\''+nm+'\' \uc740(\ub294) \ub4f1\ub85d\ub41c \uc0ac\uc6a9\uc790\uac00 \uc544\ub2d9\ub2c8\ub2e4.'); return; }
-  if(emp.pw!==pw){ loginErr('\ube44\ubc00\ubc88\ud638\uac00 \ud2c0\ub838\uc2b5\ub2c8\ub2e4.'); return; }
+  if(!emp){ loginErr('\''+nm+'\' 은(는) 등록된 사용자가 아닙니다.'); return; }
+  if(emp.pw!==pw){ loginErr('비밀번호가 틀렸습니다.'); return; }
+  if(emp.inactive){ loginErr('비활성화된 계정입니다. 관리자에게 문의하세요.'); return; }
   CU=emp;
   g('login-wrap').style.display='none';
   g('app').style.display='block';
@@ -998,27 +1228,224 @@ g('inp-pw').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin
 function doLogout(){ CU=null; g('login-wrap').style.display='flex'; g('app').style.display='none'; g('inp-name').value=''; g('inp-pw').value=''; g('lerr').textContent=''; }
 g('btn-logout').addEventListener('click', doLogout);
 
+/* ── 테스트 데이터 초기화 ── */
+var DEFAULT_EMPS = [
+  {id:'jang', name:'\uc7a5\uc138\uc9c4', join:'2020-03-02', role:'employee', total:15, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0},
+  {id:'yoo',  name:'\uc720\uc81c\uc131', join:'2018-07-01', role:'admin',    total:20, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0},
+  {id:'oh',   name:'\uc624\uacbd\uc9c0', join:'2021-01-04', role:'approver', total:15, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0},
+  {id:'cho',  name:'\uc870\uc2e0\ub155', join:'2022-05-09', role:'employee', total:15, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0},
+  {id:'ohse', name:'\uc624\uc138\ud76c', join:'2023-03-13', role:'employee', total:15, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0},
+  {id:'jung', name:'\uc815\ud558\ube48', join:'2019-11-11', role:'employee', total:18, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0},
+  {id:'kim',  name:'\uae40\uc11c\uc778', join:'2024-01-08', role:'employee', total:12, usedD:0, usedH:0, pw:'1234', ccTotal:3, ccUsed:0, slTotal:60, slUsed:0}
+];
+
+// 관리자만 초기화 버튼 표시
+function updateResetBtn(){
+  var btn=g('btn-reset-data');
+  if(btn) btn.style.display=(CU&&CU.role==='admin')?'':'none';
+}
+
+// 체크박스 - 전체초기화 선택 시 나머지 자동 체크
+/* ── 초기화 모달 ── */
+function initResetSelects(){
+  var now=new Date(), yr=now.getFullYear();
+  var yrs=[yr-2,yr-1,yr,yr+1];
+  var yopts=yrs.map(function(y){return '<option value="'+y+'"'+(y===yr?' selected':'')+'>'+y+'년</option>';}).join('');
+  var mopts=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
+    .map(function(m,i){return '<option value="'+i+'"'+(i===now.getMonth()?' selected':'')+'>'+m+'</option>';}).join('');
+  ['rst-lv-yr','rst-ot-yr'].forEach(function(id){ var el=g(id); if(el) el.innerHTML=yopts; });
+  ['rst-lv-mo','rst-ot-mo'].forEach(function(id){ var el=g(id); if(el) el.innerHTML=mopts; });
+}
+
+// 체크박스 - 범위 패널 토글
+g('chk-lv').addEventListener('change', function(){
+  g('rst-lv-range').style.display=this.checked?'block':'none';
+  checkResetReady();
+});
+g('chk-ot').addEventListener('change', function(){
+  g('rst-ot-range').style.display=this.checked?'block':'none';
+  checkResetReady();
+});
+
+// 라디오 - 년/월 select 표시 제어
+function bindRangeRadio(name, wrId, moId){
+  document.querySelectorAll('input[name="'+name+'"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      var v=this.value;
+      var wr=g(wrId), mo=g(moId);
+      wr.style.display=(v==='year'||v==='month')?'flex':'none';
+      mo.style.display=(v==='month')?'':'none';
+    });
+  });
+}
+bindRangeRadio('lv-range','lv-yr-wrap','rst-lv-mo');
+bindRangeRadio('ot-range','ot-yr-wrap','rst-ot-mo');
+
+// 전체 초기화 체크 시 하위 자동 체크
+g('chk-all').addEventListener('change', function(){
+  var v=this.checked;
+  ['chk-lv','chk-ot','chk-nt','chk-pw'].forEach(function(id){ g(id).checked=v; });
+  g('rst-lv-range').style.display=v?'block':'none';
+  g('rst-ot-range').style.display=v?'block':'none';
+  checkResetReady();
+});
+
+['chk-nt','chk-pw'].forEach(function(id){
+  g(id).addEventListener('change', checkResetReady);
+});
+g('rst-confirm-txt').addEventListener('input', checkResetReady);
+
+function checkResetReady(){
+  var anyChecked=['chk-lv','chk-ot','chk-nt','chk-pw','chk-all'].some(function(id){ return g(id).checked; });
+  var txt=g('rst-confirm-txt').value.trim();
+  var ok=anyChecked && txt==='초기화';
+  var btn=g('btn-reset-ok');
+  btn.disabled=!ok;
+  btn.style.opacity=ok?'1':'0.5';
+}
+
+g('btn-reset-data').addEventListener('click', function(){
+  ['chk-lv','chk-ot','chk-nt','chk-pw','chk-all'].forEach(function(id){ g(id).checked=false; });
+  g('rst-lv-range').style.display='none';
+  g('rst-ot-range').style.display='none';
+  document.querySelectorAll('input[name="lv-range"]')[0].checked=true;
+  document.querySelectorAll('input[name="ot-range"]')[0].checked=true;
+  g('lv-yr-wrap').style.display='none';
+  g('ot-yr-wrap').style.display='none';
+  g('rst-lv-mo').style.display='none';
+  g('rst-ot-mo').style.display='none';
+  g('rst-confirm-txt').value='';
+  initResetSelects();
+  checkResetReady();
+  openM('mo-reset');
+  if(window.innerWidth<=768) closeSB();
+});
+
+g('btn-reset-ok').addEventListener('click', function(){
+  if(g('rst-confirm-txt').value.trim()!=='초기화') return;
+  var doLv=g('chk-lv').checked, doOt=g('chk-ot').checked,
+      doNt=g('chk-nt').checked, doPw=g('chk-pw').checked, doAll=g('chk-all').checked;
+  var msgs=[];
+
+  function getRange(prefix){
+    var r=document.querySelector('input[name="'+prefix+'-range"]:checked');
+    var v=r?r.value:'all';
+    var yr=parseInt(g('rst-'+prefix+'-yr').value);
+    var mo=parseInt(g('rst-'+prefix+'-mo').value);
+    return {mode:v, yr:yr, mo:mo};
+  }
+  function matchRange(dateStr, range){
+    var dt=new Date(dateStr);
+    if(range.mode==='all') return true;
+    if(range.mode==='year') return dt.getFullYear()===range.yr;
+    if(range.mode==='month') return dt.getFullYear()===range.yr && dt.getMonth()===range.mo;
+    return false;
+  }
+  function rangeLabel(range){
+    if(range.mode==='all') return '전체';
+    if(range.mode==='year') return range.yr+'년';
+    var mos=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+    return range.yr+'년 '+mos[range.mo];
+  }
+
+  if(doAll){
+    emps=JSON.parse(JSON.stringify(DEFAULT_EMPS));
+    leaves=[]; otList=[]; notifs=[];
+    lidx=1; oidx=1; nidx=1;
+    msgs.push('전체 완전 초기화 완료 (직원 기본값 복원)');
+    try{['guntae_emps','guntae_leaves','guntae_ot','guntae_lidx','guntae_oidx','guntae_notifs','guntae_nidx'].forEach(function(k){localStorage.removeItem(k);});}catch(e){}
+  } else {
+    if(doLv){
+      var lvRange=getRange('lv');
+      if(lvRange.mode==='all'){
+        leaves=[]; lidx=1;
+        emps.forEach(function(e){ e.usedD=0; e.usedH=0; e.ccUsed=0; e.slUsed=0; });
+        msgs.push('휴가 신청내역 전체 삭제 및 사용일수 초기화');
+      } else {
+        // 범위 내 건만 삭제, 나머지 유지
+        var removed=leaves.filter(function(r){ return matchRange(r.sd, lvRange); });
+        leaves=leaves.filter(function(r){ return !matchRange(r.sd, lvRange); });
+        // 삭제된 승인 건의 사용일수 재계산
+        emps.forEach(function(emp){
+          var annTypes=['연가','오전반가','오후반가','외출','조퇴'];
+          removed.filter(function(r){return r.empId===emp.id&&r.status==='승인';}).forEach(function(r){
+            if(annTypes.indexOf(r.type)>-1){ emp.usedD=Math.max(0,emp.usedD-(r.wd||0)); emp.usedH=Math.max(0,emp.usedH-(r.wh||0)); }
+            else if(r.type==='자녀돌봄'){ emp.ccUsed=Math.max(0,(emp.ccUsed||0)-(r.wd||0)); }
+            else if(r.type==='병가'){ emp.slUsed=Math.max(0,(emp.slUsed||0)-(r.wd||0)); }
+          });
+        });
+        msgs.push('휴가 신청내역 삭제: '+rangeLabel(lvRange)+' ('+removed.length+'건)');
+      }
+    }
+    if(doOt){
+      var otRange=getRange('ot');
+      if(otRange.mode==='all'){
+        otList=[]; oidx=1;
+        msgs.push('초과근무 신청내역 전체 삭제');
+      } else {
+        var removedOt=otList.filter(function(r){ return matchRange(r.dt, otRange); });
+        otList=otList.filter(function(r){ return !matchRange(r.dt, otRange); });
+        msgs.push('초과근무 삭제: '+rangeLabel(otRange)+' ('+removedOt.length+'건)');
+      }
+    }
+    if(doNt){ notifs=[]; nidx=1; msgs.push('알림 내역 삭제'); }
+    if(doPw){ emps.forEach(function(e){ e.pw='1234'; }); if(CU) CU.pw='1234'; msgs.push('전 직원 비밀번호 → 1234'); }
+  }
+
+  saveData();
+  closeM('mo-reset');
+  toast('✅ '+msgs.join(' / '), 'ok');
+
+  renderDash(); renderNI(); updND();
+  if(typeof renderEmpTbl==='function') renderEmpTbl();
+  if(typeof renderAL==='function') renderAL();
+  if(typeof renderAO==='function') renderAO();
+  updPend();
+  if(doAll){ setTimeout(doLogout, 1500); }
+});
+
 /* ── 모바일 사이드바 ── */
+var sbEl=g('sb'), ovEl=g('sb-overlay'), hbgEl=g('btn-hbg');
 function openSB(){
-  g('sb').classList.add('open');
-  g('sb-overlay').classList.add('on');
-  g('btn-hbg').classList.add('on');
+  sbEl.classList.add('open');
+  ovEl.classList.add('on');
+  hbgEl.classList.add('on');
+  document.body.style.overflow='hidden'; // 뒤 스크롤 막기
 }
 function closeSB(){
-  g('sb').classList.remove('open');
-  g('sb-overlay').classList.remove('on');
-  g('btn-hbg').classList.remove('on');
+  sbEl.classList.remove('open');
+  ovEl.classList.remove('on');
+  hbgEl.classList.remove('on');
+  document.body.style.overflow='';
 }
-g('btn-hbg').addEventListener('click', function(){
-  g('sb').classList.contains('open') ? closeSB() : openSB();
+hbgEl.addEventListener('click', function(e){
+  e.stopPropagation();
+  sbEl.classList.contains('open') ? closeSB() : openSB();
 });
-g('sb-overlay').addEventListener('click', closeSB);
+ovEl.addEventListener('click', closeSB);
 // 메뉴 항목 클릭 시 모바일에서 자동으로 사이드바 닫기
 document.querySelectorAll('.sbi').forEach(function(it){
   it.addEventListener('click', function(){
     if(window.innerWidth <= 768) closeSB();
   });
 });
+// 스와이프로 사이드바 닫기
+(function(){
+  var startX=0, startY=0;
+  sbEl.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;startY=e.touches[0].clientY;},{passive:true});
+  sbEl.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-startX;
+    var dy=Math.abs(e.changedTouches[0].clientY-startY);
+    if(dx < -50 && dy < 60) closeSB();
+  });
+  // 오른쪽 엣지 스와이프로 사이드바 열기
+  document.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;startY=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-startX;
+    var dy=Math.abs(e.changedTouches[0].clientY-startY);
+    if(startX<20 && dx>50 && dy<60 && window.innerWidth<=768) openSB();
+  });
+})();
 
 /* ── CHANGE PW ── */
 g('btn-chpw').addEventListener('click', function(){ g('cpw-cur').value=''; g('cpw-new').value=''; g('cpw-cf').value=''; g('cpw-err').textContent=''; openM('mo-cpw'); });
@@ -1087,17 +1514,8 @@ function initApp(){
   g('topnm').textContent=CU.name;
   g('nav-appr').style.display=(CU.role==='admin'||CU.role==='approver')?'':'none';
   g('nav-adm').style.display=CU.role==='admin'?'':'none';
+  updateResetBtn();
   g('la-emp').value=CU.name; g('ot-emp').value=CU.name;
-  // 관리자 근무시간 확인 페이지 - 직원 선택 표시
-  var ohEmp=g('oh-emp');
-  if(CU.role==='admin'||CU.role==='approver'){
-    ohEmp.style.display='';
-    ohEmp.innerHTML='<option value="">\uc804\uccb4 \uc9c1\uc6d0</option>'+emps.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('');
-    g('oh-adm-guide').style.display='';
-  } else {
-    ohEmp.style.display='none';
-    g('oh-adm-guide').style.display='none';
-  }
   var td=todayS(); g('la-s').value=td; g('la-e').value=td; g('la-hd').value=td; g('la-td').value=td; g('ot-dt').value=td;
   buildOTTimeOpts(td);
   initSels();
@@ -1640,86 +2058,139 @@ function minsToHHMM(mins){
   var h=Math.floor(mins/60), m=mins%60;
   return h+':'+(m<10?'0':'')+m;
 }
-window.saveOTNote=function(id){
-  var inp=g('otn-'+id);
-  if(!inp) return;
-  var val=inp.value.trim();
-  // 형식 검증: H:MM 또는 HH:MM, 최대 4:00
-  if(val){
-    var parts=val.split(':');
-    var ok=parts.length===2&&!isNaN(parseInt(parts[0]))&&!isNaN(parseInt(parts[1]))&&parseInt(parts[1])>=0&&parseInt(parts[1])<=59;
-    if(!ok){ toast('\uc2dc\uac04 \ud615\uc2dd\uc774 \uc62c\ubc14\ub974\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4. (H:MM \ud615\uc2dd)','wt'); return; }
-    var totalMin=parseInt(parts[0])*60+parseInt(parts[1]);
-    if(totalMin>240){ toast('\uc2dc\uac04\uc740 \ucd5c\ub300 4:00\uc73c\ub85c \uc785\ub825\ud574\uc8fc\uc138\uc694.','wt'); return; }
-  }
-  var r=otList.find(function(x){return x.id===id;});
-  if(r){ r.note=val; saveData(); toast('\uc2dc\uac04\uc774 \uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok'); renderOH(); }
-};
+function fmtWon(n){ return Number(n).toLocaleString('ko-KR')+'원'; }
 
 function renderOH(){
   var yr=parseInt(g('oh-yr').value), mo=parseInt(g('oh-mo').value);
-  var isAdm=(CU.role==='admin'||CU.role==='approver');
-  var empFilter=isAdm?(g('oh-emp').value||''):CU.id;
-  var d=otList.filter(function(r){
+
+  // ★ 무조건 로그인한 본인 데이터만 — 역할과 무관하게 CU.id 하드코딩
+  var myId = CU.id;
+  var d = otList.filter(function(r){
+    if(r.empId !== myId) return false;
     var dt=new Date(r.dt);
-    if(empFilter&&r.empId!==empFilter) return false;
-    if(!empFilter&&!isAdm&&r.empId!==CU.id) return false;
-    return dt.getFullYear()===yr&&dt.getMonth()===mo;
-  }).sort(function(a,b){return a.dt<b.dt?-1:1;});
+    return dt.getFullYear()===yr && dt.getMonth()===mo;
+  }).sort(function(a,b){ return a.dt<b.dt?-1:1; });
 
   var th=d.reduce(function(a,r){return a+r.hours;},0);
-  var ah=d.filter(function(r){return r.status==='\uc2b9\uc778';}).reduce(function(a,r){return a+r.hours;},0);
-  var pendRejH=d.filter(function(r){return r.status==='\ub300\uae30'||r.status==='\ubc18\ub824';}).reduce(function(a,r){return a+r.hours;},0);
-  // 비고(인정시간) 누계
+  var ah=d.filter(function(r){return r.status==='승인';}).reduce(function(a,r){return a+r.hours;},0);
   var noteTotalMin=d.reduce(function(a,r){return a+parseNoteMin(r.note);},0);
+  var noteHours=noteTotalMin/60;  // 실제 누계 (소수)
+
+  var maxH=otSettings.maxHours||10;
+  var maxMin=maxH*60;
+  var rate=(CU.otRate>0)?CU.otRate:0;
+
+  // ★ 수당 계산: 1시간 단위 내림, 최대 maxH시간 상한
+  var billableH = Math.min(Math.floor(noteHours), maxH);  // 정수 시간, 최대 10h
+  var payAmt    = billableH * rate;                        // 반올림 없이 정수×정수
+
+  var remMin=Math.max(0,maxMin-noteTotalMin);
+  var remH=Math.floor(remMin/60), remM=remMin%60;
+  var remStr=remH+'시간'+(remM>0?' '+remM+'분':'');
+  var isOver=noteTotalMin>maxMin;
+  var noteColor=isOver?'var(--acc4)':'var(--acc2)';
+  var remColor=remMin===0?'var(--acc4)':'var(--txt)';
+  var pctRaw=maxMin>0?Math.min(100,Math.round(noteTotalMin/maxMin*100)):0;
+
+  /* 요약 패널 */
+  var panelHtml=
+    '<div style="background:#fff;border:1px solid var(--bdr);border-radius:14px;overflow:hidden;box-shadow:var(--sh);">'
+    +'<div style="background:linear-gradient(135deg,#1a2236,#2d3f6b);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;">'
+      +'<div style="color:#fff;font-size:.82rem;font-weight:700;">&#9200; 초과근무 수당 현황 &mdash; <span style="color:rgba(255,255,255,.7)">'+CU.name+'</span></div>'
+      +'<div style="color:rgba(255,255,255,.55);font-size:.74rem;">'+yr+'년 '+(mo+1)+'월</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(2,1fr);border-bottom:1px solid var(--bdr);">'
+      +'<div style="padding:14px 18px;border-right:1px solid var(--bdr);">'
+        +'<div style="font-size:.72rem;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">시간당 수당 단가</div>'
+        +'<div style="font-family:\'DM Mono\',monospace;font-size:1.25rem;font-weight:600;color:var(--acc);">'+(rate>0?fmtWon(rate):'<span style="color:var(--txt3);font-size:.9rem;">미설정</span>')+'</div>'
+        +'<div style="font-size:.68rem;color:var(--txt3);margin-top:3px;">관리자에게 문의</div>'
+      +'</div>'
+      +'<div style="padding:14px 18px;">'
+        +'<div style="font-size:.72rem;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">총 배정시간</div>'
+        +'<div style="font-family:\'DM Mono\',monospace;font-size:1.25rem;font-weight:600;color:var(--txt);">'+maxH+'시간</div>'
+        +'<div style="font-size:.68rem;color:var(--txt3);margin-top:3px;">월 최대 인정 기준</div>'
+      +'</div>'
+      +'<div style="padding:14px 18px;border-right:1px solid var(--bdr);border-top:1px solid var(--bdr);">'
+        +'<div style="font-size:.72rem;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">인정시간 누계</div>'
+        +'<div style="font-family:\'DM Mono\',monospace;font-size:1.25rem;font-weight:600;color:'+noteColor+';">'+(noteTotalMin>0?minsToHHMM(noteTotalMin)+'<small style="font-size:.75rem;"> 시간</small>':'<span style="color:var(--txt3);font-size:.9rem;">-</span>')+'</div>'
+        +(isOver?'<div style="font-size:.68rem;color:var(--acc4);margin-top:3px;font-weight:600;">&#9888; 한도 초과</div>':'<div style="font-size:.68rem;color:var(--txt3);margin-top:3px;">관리자 입력 기준</div>')
+      +'</div>'
+      +'<div style="padding:14px 18px;border-top:1px solid var(--bdr);">'
+        +'<div style="font-size:.72rem;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">잔여 가능 시간</div>'
+        +'<div style="font-family:\'DM Mono\',monospace;font-size:1.25rem;font-weight:600;color:'+remColor+';">'+(noteTotalMin===0?maxH+'시간':remStr)+'</div>'
+        +'<div style="font-size:.68rem;color:var(--txt3);margin-top:3px;">'+(remMin===0?'한도 소진':'추가 신청 가능')+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="padding:10px 18px 0;">'
+      +'<div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--txt3);margin-bottom:4px;"><span>인정시간 사용률</span><span>'+pctRaw+'%'+(isOver?' (초과)':'')+'</span></div>'
+      +'<div style="height:7px;background:var(--bdr);border-radius:4px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;border-radius:4px;background:'+(isOver?'var(--acc4)':'linear-gradient(90deg,var(--acc2),var(--acc))')+';width:'+pctRaw+'%;transition:width .5s;"></div></div>'
+    +'</div>'
+    +'<div style="margin:0 14px 14px;background:linear-gradient(135deg,#f0f4ff,#e8f4ff);border:1px solid #c7d7ff;border-radius:10px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+      +'<div>'
+        +'<div style="font-size:.74rem;font-weight:700;color:var(--acc);margin-bottom:3px;">&#128176; 초과근무 수당 예상 지급액</div>'
+        +'<div style="font-size:.72rem;color:var(--txt3);">'
+          +(rate>0
+            ? billableH+'h × '+fmtWon(rate)+(noteTotalMin>billableH*60?' ('+minsToHHMM(noteTotalMin)+' → 1시간 단위 내림)':'')
+            : '단가 미설정 — 관리자에게 문의하세요')
+        +'</div>'
+      +'</div>'
+      +'<div style="font-family:\'DM Mono\',monospace;font-size:1.5rem;font-weight:700;color:'+(rate>0?'var(--acc)':'var(--txt3)')+';">'+(rate>0?fmtWon(payAmt):'- 원')+'</div>'
+    +'</div>'
+    +'<div style="background:#fef3c7;border-top:1px solid #fde68a;padding:9px 18px;display:flex;align-items:flex-start;gap:6px;">'
+      +'<span style="font-size:13px;flex-shrink:0;">&#9888;&#65039;</span>'
+      +'<span style="font-size:.74rem;color:#92400e;line-height:1.6;">월 초과근무 시간은 총 <strong>'+maxH+'시간 이내</strong>만 인정되며, 수당은 <strong>1시간 단위(내림)</strong>으로 계산됩니다. 초과분은 제외됩니다.</span>'
+    +'</div>'
+  +'</div>';
+
+  g('oh-panel').innerHTML=panelHtml;
 
   g('oh-sum').innerHTML=
-    '<div class="otchip"><strong>'+fmtH(th)+'</strong>\uc2e0\uccad \ud569\uacc4</div>'+
-    '<div class="otchip"><strong style="color:var(--acc2)">'+fmtH(ah)+'</strong>\uc2b9\uc778</div>'+
-    '<div class="otchip"><strong style="color:var(--acc3)">'+th-ah+'\uc2dc\uac04</strong>\ub300\uae30/\ubc18\ub824</div>'+
-    (isAdm&&noteTotalMin>0?'<div class="otchip"><strong style="color:var(--acc5)">'+minsToHHMM(noteTotalMin)+'</strong>\uc778\uc815\uc2dc\uac04 \ub204\uacc4</div>':'');
+    '<div class="otchip"><strong>'+fmtH(th)+'</strong>신청 합계</div>'+
+    '<div class="otchip"><strong style="color:var(--acc2)">'+fmtH(ah)+'</strong>승인</div>'+
+    '<div class="otchip"><strong style="color:var(--acc3)">'+(th-ah)+'시간</strong>대기/반려</div>';
 
   var tb=g('oh-tb');
-  if(!d.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--txt3)">\ud574\ub2f9 \uc6d4\uc758 \ub0b4\uc5ed\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';return;}
+  if(!d.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--txt3)">해당 월의 내역이 없습니다.</td></tr>';return;}
+  // ★ 인정시간 입력란 없음 — 읽기 전용 표시만
   tb.innerHTML=d.map(function(r){
-    var noteCell;
-    if(isAdm){
-      // 관리자: 입력 가능한 인풋 + 저장 버튼
-      noteCell='<div style="display:flex;gap:4px;align-items:center;">'
-        +'<input type="text" id="otn-'+r.id+'" value="'+(r.note||'')+'" placeholder="H:MM" '
-        +'style="width:62px;padding:4px 7px;border:1.5px solid var(--bdr);border-radius:6px;font-size:.8rem;font-family:\'DM Mono\',monospace;outline:none;" '
-        +'onfocus="this.style.borderColor=\'var(--acc)\'" onblur="this.style.borderColor=\'var(--bdr)\'">'
-        +'<button class="btn bp bxs" onclick="saveOTNote('+r.id+')">\uc800\uc7a5</button>'
-        +'</div>';
-    } else {
-      noteCell='<span style="font-family:\'DM Mono\',monospace;color:var(--acc5);font-weight:600;">'+(r.note||'-')+'</span>';
-    }
-    var empCol=isAdm?('<td><strong>'+r.empNm+'</strong></td>'):'';
-    return '<tr>'+(isAdm?empCol:'')+'<td>'+fmtD(r.dt)+'</td>'
+    var noteCell='<span style="font-family:\'DM Mono\',monospace;color:var(--acc5);font-weight:600;">'+(r.note||'-')+'</span>';
+    return '<tr><td>'+fmtD(r.dt)+'</td>'
       +'<td style="font-family:\'DM Mono\'">'+r.start+'</td>'
       +'<td style="font-family:\'DM Mono\'">'+r.end+'</td>'
-      +'<td style="font-family:\'DM Mono\';color:var(--acc);font-weight:600;">'+r.hours+'\uc2dc\uac04</td>'
+      +'<td style="font-family:\'DM Mono\';color:var(--acc);font-weight:600;">'+r.hours+'시간</td>'
       +'<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.desc+'</td>'
       +'<td>'+noteCell+'</td>'
       +'<td>'+bdg(r.status)+'</td></tr>';
   }).join('');
-  // 관리자 모드면 thead에 직원명 컬럼 추가
+
+  // thead에 직원 컬럼 없음 확인
   var thead=tb.closest('table').querySelector('thead tr');
-  if(isAdm){
-    if(!thead.querySelector('th[data-emp]')){
-      var th2=document.createElement('th');
-      th2.setAttribute('data-emp','1');
-      th2.textContent='\uc9c1\uc6d0';
-      thead.insertBefore(th2, thead.firstChild);
-    }
-  } else {
-    var empTh=thead.querySelector('th[data-emp]');
-    if(empTh) thead.removeChild(empTh);
-  }
+  var empTh=thead.querySelector('th[data-emp]');
+  if(empTh) thead.removeChild(empTh);
 }
+
 g('oh-yr').addEventListener('change',renderOH);
 g('oh-mo').addEventListener('change',renderOH);
-g('oh-emp').addEventListener('change',renderOH);
+
+/* ── 초과근무 설정 모달 (월 최대시간만) ── */
+g('btn-ot-settings').addEventListener('click',function(){
+  g('ots-max').value=otSettings.maxHours||10;
+  updateOTSPreview();
+  openM('mo-otset');
+});
+function updateOTSPreview(){
+  var m=parseInt(g('ots-max').value)||10;
+  g('ots-prev-max').textContent=m+'시간';
+}
+g('ots-max').addEventListener('input',updateOTSPreview);
+g('btn-otset-ok').addEventListener('click',function(){
+  var m=parseInt(g('ots-max').value); if(isNaN(m)||m<1){toast('최대 시간을 올바르게 입력하세요.','wt');return;}
+  otSettings.maxHours=m;
+  saveData();
+  closeM('mo-otset');
+  toast('설정 저장 완료 (월 최대 인정: '+m+'시간)','ok');
+  renderOH();
+});
 
 /* ── APPROVER ── */
 function updPend(){
@@ -1770,6 +2241,13 @@ g('btn-rejok').addEventListener('click',function(){
 
 /* ── ADMIN ── */
 function renderEmpTbl(){
+  // 비활성 직원 수 배지
+  var inactiveCnt=emps.filter(function(e){return e.inactive&&e.role!=='admin';}).length;
+  var badge=g('inactive-badge');
+  if(badge){
+    if(inactiveCnt>0){ badge.textContent='비활성 '+inactiveCnt+'명'; badge.style.display=''; }
+    else badge.style.display='none';
+  }
   g('emp-tb').innerHTML=emps.map(function(e){
     var ri=remInfo(e);
     var ccT=(e.ccTotal!==undefined&&e.ccTotal!==null)?e.ccTotal:3;
@@ -1778,17 +2256,44 @@ function renderEmpTbl(){
     var slT=(e.slTotal!==undefined&&e.slTotal!==null)?e.slTotal:60;
     var slU=leaves.filter(function(r){return r.empId===e.id&&r.type==='\ubcd1\uac00'&&r.status==='\uc2b9\uc778';}).reduce(function(a,r){return a+(r.wd||0);},0);
     var slR=slT-slU;
-    return '<tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="av" style="background:'+avc(e.name)+';width:28px;height:28px;font-size:.72rem;">'+e.name[0]+'</div><strong>'+e.name+'</strong></div></td>'
+    var isInactive=!!e.inactive;
+    var rowStyle=isInactive?'opacity:.45;':'';
+    var nameBadge=isInactive?'<span class="bdg bng2" style="font-size:.64rem;margin-left:4px;">비활성</span>':'';
+    var roleLabel=e.role==='admin'?'관리자':e.role==='approver'?'승인자':'직원';
+    var roleBdg='<span class="bdg '+(e.role==='admin'?'bok2':e.role==='approver'?'bwt':'bgl')+'">'+roleLabel+'</span>';
+    var toggleBtn=e.role!=='admin'
+      ? '<button class="btn bxs '+(isInactive?'bok':'bng')+'" style="min-width:58px;" onclick="toggleActive(\''+e.id+'\')">'+(isInactive?'&#9654; 활성':'&#9646;&#9646; 비활성')+'</button>'
+      : '';
+    return '<tr style="'+rowStyle+'">'
+      +'<td><div style="display:flex;align-items:center;gap:7px;"><div class="av" style="background:'+(isInactive?'#94a3b8':avc(e.name))+';width:28px;height:28px;font-size:.72rem;">'+e.name[0]+'</div><strong>'+e.name+'</strong>'+nameBadge+'</div></td>'
       +'<td>'+fmtD(e.join)+'</td>'
-      +'<td><span class="bdg '+(e.role==='admin'?'bok2':e.role==='approver'?'bwt':'bgl')+'">'+(e.role==='admin'?'\uad00\ub9ac\uc790':e.role==='approver'?'\uc2b9\uc778\uc790':'\uc9c1\uc6d0')+'</span></td>'
-      +'<td style="font-family:\'DM Mono\'">'+e.total+'\uc77c</td>'
-      +'<td style="font-family:\'DM Mono\'">'+e.usedD+'\uc77c'+(e.usedH?' '+e.usedH+'\uc2dc\uac04':'')+'</td>'
+      +'<td>'+roleBdg+'</td>'
+      +'<td style="font-family:\'DM Mono\'">'+e.total+'일</td>'
+      +'<td style="font-family:\'DM Mono\'">'+e.usedD+'일'+(e.usedH?' '+e.usedH+'시간':'')+'</td>'
       +'<td style="font-family:\'DM Mono\';color:var(--acc2);">'+ri.str+'</td>'
-      +'<td style="font-family:\'DM Mono\';font-size:.82rem;"><span style="color:#ec4899;font-weight:700;">'+ccR+'</span><span style="color:var(--txt3);">/'+ccT+'\uc77c</span></td>'
-      +'<td style="font-family:\'DM Mono\';font-size:.82rem;"><span style="color:#06b6d4;font-weight:700;">'+slR+'</span><span style="color:var(--txt3);">/'+slT+'\uc77c</span></td>'
-      +'<td><button class="btn bol bxs" onclick="openEE(\''+e.id+'\')">&#9998; \uc218\uc815</button></td></tr>';
+      +'<td style="font-family:\'DM Mono\';font-size:.82rem;"><span style="color:#ec4899;font-weight:700;">'+ccR+'</span><span style="color:var(--txt3);">/'+ccT+'일</span></td>'
+      +'<td style="font-family:\'DM Mono\';font-size:.82rem;"><span style="color:#06b6d4;font-weight:700;">'+slR+'</span><span style="color:var(--txt3);">/'+slT+'일</span></td>'
+      +'<td style="font-family:\'DM Mono\';font-size:.82rem;">'+(e.otRate>0?'<span style="color:var(--acc);font-weight:600;">'+fmtWon(e.otRate||0)+'</span>':'<span style="color:var(--txt3);">미설정</span>')+'</td>'
+      +'<td><div style="display:flex;gap:5px;flex-wrap:wrap;">'
+        +'<button class="btn bol bxs" onclick="openEE(\''+e.id+'\')">&#9998; 수정</button>'
+        +toggleBtn
+      +'</div></td></tr>';
   }).join('');
 }
+
+window.toggleActive=function(id){
+  var e=getEmpById(id); if(!e||e.role==='admin') return;
+  e.inactive=!e.inactive;
+  saveData();
+  // 현재 로그인 중인 직원이 비활성화되면 강제 로그아웃
+  if(e.inactive && CU && CU.id===id){
+    toast(e.name+'님이 비활성화되었습니다. 로그아웃됩니다.','wt');
+    setTimeout(doLogout, 1500);
+    return;
+  }
+  toast(e.name+'님이 '+(e.inactive?'비활성화':'활성화')+'되었습니다.', e.inactive?'wt':'ok');
+  renderEmpTbl();
+};
 window.openEE=function(id){
   var e=getEmpById(id); if(!e)return;
   editId=id;
@@ -1798,6 +2303,7 @@ window.openEE=function(id){
   g('ee-cc').value=(e.ccTotal!==undefined && e.ccTotal!==null) ? e.ccTotal : 3;
   g('ee-sl').value=(e.slTotal!==undefined && e.slTotal!==null) ? e.slTotal : 60;
   g('ee-rl').value=e.role;
+  g('ee-rate').value=(e.otRate!==undefined && e.otRate!==null) ? e.otRate : 0;
   openM('mo-eemp');
 };
 g('btn-eeok').addEventListener('click',function(){
@@ -1811,6 +2317,9 @@ g('btn-eeok').addEventListener('click',function(){
   e.ccTotal = (ccVal!=='' && !isNaN(parseInt(ccVal))) ? parseInt(ccVal) : (e.ccTotal||3);
   e.slTotal = (slVal!=='' && !isNaN(parseInt(slVal))) ? parseInt(slVal) : (e.slTotal||60);
 
+  var rateVal=parseInt(g('ee-rate').value);
+  e.otRate = (!isNaN(rateVal)&&rateVal>=0) ? rateVal : (e.otRate||0);
+
   e.role = g('ee-rl').value;
   saveData();
   closeM('mo-eemp');
@@ -1818,7 +2327,7 @@ g('btn-eeok').addEventListener('click',function(){
   renderEmpTbl();
 });
 
-g('btn-addemp').addEventListener('click',function(){ g('ae-nm').value=''; g('ae-jn').value=todayS(); g('ae-dy').value=15; g('ae-rl').value='employee'; openM('mo-aemp'); });
+g('btn-addemp').addEventListener('click',function(){ g('ae-nm').value=''; g('ae-jn').value=todayS(); g('ae-dy').value=15; g('ae-rl').value='employee'; g('ae-rate').value=0; openM('mo-aemp'); });
 g('btn-aeok').addEventListener('click',function(){
   var nm=g('ae-nm').value.trim(); if(!nm){toast('\uc774\ub984\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694.','wt');return;}
   if(getEmpByNm(nm)){toast('\uc774\ubbf8 \uc874\uc7ac\ud558\ub294 \uc774\ub984\uc785\ub2c8\ub2e4.','wt');return;}
@@ -1829,11 +2338,12 @@ g('btn-aeok').addEventListener('click',function(){
     total:parseFloat(g('ae-dy').value)||15,
     usedD:0, usedH:0, pw:'1234',
     ccTotal:parseInt(g('ae-cc').value)||3, ccUsed:0,
-    slTotal:parseInt(g('ae-sl').value)||60, slUsed:0
+    slTotal:parseInt(g('ae-sl').value)||60, slUsed:0,
+    otRate:parseInt(g('ae-rate').value)||0
   });
   saveData();
   var eo='<option value="">\uc804\uccb4 \uc9c1\uc6d0</option>'+emps.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('');
-  g('al-emp').innerHTML=eo; g('ao-emp').innerHTML=eo; g('oh-emp').innerHTML=eo;
+  g('al-emp').innerHTML=eo; g('ao-emp').innerHTML=eo;
   closeM('mo-aemp'); toast(nm+'\ub2d8\uc774 \ucd94\uac00\ub418\uc5c8\uc2b5\ub2c8\ub2e4. (\ube44\ubc00\ubc88\ud638: 1234)','ok'); renderEmpTbl();
 });
 
@@ -1852,13 +2362,60 @@ window.renderAL=renderAL;
 
 function renderAO(){
   var ef=g('ao-emp').value, yr=parseInt(g('ao-yr').value), mo=g('ao-mo').value;
-  var d=otList.filter(function(r){ if(ef&&r.empId!==ef)return false; var dt=new Date(r.dt); if(dt.getFullYear()!==yr)return false; if(mo!==''&&dt.getMonth()!==parseInt(mo))return false; return true; }).sort(function(a,b){return b.id-a.id;});
-  var th=d.reduce(function(a,r){return a+r.hours;},0), ah=d.filter(function(r){return r.status==='\uc2b9\uc778';}).reduce(function(a,r){return a+r.hours;},0);
-  g('ao-stats').innerHTML='<div class="sc"><div class="scico bl">&#9200;</div><div class="scv">'+fmtH(th)+'</div><div class="scl">\ucd1d \ucd08\uacfc\uadfc\ubb34</div></div><div class="sc"><div class="scico gr">&#9989;</div><div class="scv">'+fmtH(ah)+'</div><div class="scl">\uc2b9\uc778 \uc644\ub8cc</div></div><div class="sc"><div class="scico am">&#9203;</div><div class="scv">'+d.filter(function(r){return r.status==='\ub300\uae30';}).length+'<small>\uac74</small></div><div class="scl">\ub300\uae30 \uc911</div></div>';
+  var d=otList.filter(function(r){
+    if(ef&&r.empId!==ef) return false;
+    var dt=new Date(r.dt);
+    if(dt.getFullYear()!==yr) return false;
+    if(mo!==''&&dt.getMonth()!==parseInt(mo)) return false;
+    return true;
+  }).sort(function(a,b){return b.id-a.id;});
+
+  var th=d.reduce(function(a,r){return a+r.hours;},0);
+  var ah=d.filter(function(r){return r.status==='승인';}).reduce(function(a,r){return a+r.hours;},0);
+  var noteTotalMin=d.reduce(function(a,r){return a+parseNoteMin(r.note);},0);
+
+  g('ao-stats').innerHTML=
+    '<div class="sc"><div class="scico bl">&#9200;</div><div class="scv">'+fmtH(th)+'</div><div class="scl">총 초과근무</div></div>'+
+    '<div class="sc"><div class="scico gr">&#9989;</div><div class="scv">'+fmtH(ah)+'</div><div class="scl">승인 완료</div></div>'+
+    '<div class="sc"><div class="scico am">&#9203;</div><div class="scv">'+d.filter(function(r){return r.status==='대기';}).length+'<small>건</small></div><div class="scl">대기 중</div></div>'+
+    '<div class="sc"><div class="scico pu">&#128203;</div><div class="scv">'+(noteTotalMin>0?minsToHHMM(noteTotalMin):'0:00')+'</div><div class="scl">인정시간 누계</div></div>';
+
   var tb=g('ao-tb');
-  if(!d.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--txt3)">\ub0b4\uc5ed\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';return;}
-  tb.innerHTML=d.map(function(r){return '<tr><td><div style="display:flex;align-items:center;gap:5px;"><div class="av" style="background:'+avc(r.empNm)+';width:22px;height:22px;font-size:.62rem;">'+r.empNm[0]+'</div>'+r.empNm+'</div></td><td>'+fmtD(r.dt)+'</td><td style="font-family:\'DM Mono\'">'+r.start+'</td><td style="font-family:\'DM Mono\'">'+r.end+'</td><td style="font-family:\'DM Mono\';color:var(--acc);font-weight:600;">'+fmtH(r.hours)+'</td><td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.desc+'</td><td>'+bdg(r.status)+'</td><td>'+(r.status==='\ub300\uae30'?'<div style="display:flex;gap:3px;"><button class="btn bok bxs" onclick="apvOT('+r.id+');renderAO()">승인</button><button class="btn bng bxs" onclick="openRej('+r.id+',\'ot\')">반려</button></div>':'<span style="font-size:.71rem;color:var(--txt3);">'+(r.apvAt?fmtD(r.apvAt):'-')+'</span>')+'</td></tr>';}).join('');
+  if(!d.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--txt3)">내역이 없습니다.</td></tr>';return;}
+  tb.innerHTML=d.map(function(r){
+    var noteCell='<div style="display:flex;gap:4px;align-items:center;">'
+      +'<input type="text" id="aon-'+r.id+'" value="'+(r.note||'')+'" placeholder="H:MM" '
+      +'style="width:62px;padding:4px 7px;border:1.5px solid var(--bdr);border-radius:6px;font-size:.8rem;font-family:\'DM Mono\',monospace;outline:none;" '
+      +'onfocus="this.style.borderColor=\'var(--acc)\'" onblur="this.style.borderColor=\'var(--bdr)\'">'
+      +'<button class="btn bp bxs" onclick="saveAONote('+r.id+')">저장</button>'
+      +'</div>';
+    var actCell=(r.status==='대기'
+      ?'<div style="display:flex;gap:3px;"><button class="btn bok bxs" onclick="apvOT('+r.id+');renderAO()">승인</button><button class="btn bng bxs" onclick="openRej('+r.id+',\'ot\')">반려</button></div>'
+      :'<span style="font-size:.71rem;color:var(--txt3);">'+(r.apvAt?fmtD(r.apvAt):'-')+'</span>');
+    return '<tr>'
+      +'<td><div style="display:flex;align-items:center;gap:5px;"><div class="av" style="background:'+avc(r.empNm)+';width:22px;height:22px;font-size:.62rem;">'+r.empNm[0]+'</div>'+r.empNm+'</div></td>'
+      +'<td>'+fmtD(r.dt)+'</td>'
+      +'<td style="font-family:\'DM Mono\'">'+r.start+'</td>'
+      +'<td style="font-family:\'DM Mono\'">'+r.end+'</td>'
+      +'<td style="font-family:\'DM Mono\';color:var(--acc);font-weight:600;">'+fmtH(r.hours)+'</td>'
+      +'<td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.desc+'</td>'
+      +'<td>'+noteCell+'</td>'
+      +'<td>'+bdg(r.status)+'</td>'
+      +'<td>'+actCell+'</td></tr>';
+  }).join('');
 }
+window.saveAONote=function(id){
+  var inp=g('aon-'+id); if(!inp) return;
+  var val=inp.value.trim();
+  if(val){
+    var parts=val.split(':');
+    var ok=parts.length===2&&!isNaN(parseInt(parts[0]))&&!isNaN(parseInt(parts[1]))&&parseInt(parts[1])>=0&&parseInt(parts[1])<=59;
+    if(!ok){toast('시간 형식이 올바르지 않습니다. (H:MM 형식)','wt');return;}
+    if(parseInt(parts[0])*60+parseInt(parts[1])>600){toast('최대 10:00까지 입력 가능합니다.','wt');return;}
+  }
+  var r=otList.find(function(x){return x.id===id;});
+  if(r){r.note=val;saveData();toast('인정시간이 저장되었습니다.','ok');renderAO();}
+};
 ['ao-emp','ao-yr','ao-mo'].forEach(function(id){g(id).addEventListener('change',renderAO);});
 window.renderAO=renderAO;
 
@@ -1908,15 +2465,6 @@ function dlCSV(rows, fn){
 }
 g('btn-exlv').addEventListener('click',function(){ if(!leaves.length){toast('\ub0b4\ubcf4\ub0bc \ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.','wt');return;} var rows=[['\uc9c1\uc6d0','\uc885\ub958','\uc2dc\uc791','\uc885\ub8cc','\uc77c\uc218','\uc2dc\uac04','\uc0ac\uc720','\uc2e0\uccad\uc77c','\uc0c1\ud0dc']]; leaves.forEach(function(r){rows.push([r.empNm,r.type,r.sd,r.ed||r.sd,r.wd||0,r.wh||0,r.rsn,r.appAt,r.status]);}); dlCSV(rows,'\ud734\uac00\ub0b4\uc5ed.csv'); toast('CSV \ub2e4\uc6b4\ub85c\ub4dc','ok'); });
 g('btn-exot').addEventListener('click',function(){ if(!otList.length){toast('\ub0b4\ubcf4\ub0bc \ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.','wt');return;} var rows=[['\uc9c1\uc6d0','\uadfc\ubb34\uc77c','\uc2dc\uc791','\uc885\ub8cc','\uc2dc\uac04\uc218','\uc5c5\ubb34\ub0b4\uc6a9','\ube44\uace0','\uc2e0\uccad\uc77c','\uc0c1\ud0dc']]; otList.forEach(function(r){rows.push([r.empNm,r.dt,r.start,r.end,fmtH(r.hours),r.desc,r.note||'',r.appAt,r.status]);}); dlCSV(rows,'\ucd08\uacfc\uadfc\ubb34\ub0b4\uc5ed.csv'); toast('CSV \ub2e4\uc6b4\ub85c\ub4dc','ok'); });
-
-
-var hb=document.getElementById('hamburger');
-var sb=document.querySelector('.sb');
-if(hb){
- hb.addEventListener('click',function(){
-   sb.classList.toggle('open');
- });
-}
 
 }); // DOMContentLoaded end
 </script>
