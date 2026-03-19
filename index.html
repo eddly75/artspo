@@ -449,7 +449,7 @@ tbody tr:last-child td{border-bottom:none;}
     <!-- 로컬 테스트 모드 배너 -->
     <div id="local-banner" style="display:none;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.76rem;color:#92400e;">
       <strong>🧪 로컬 테스트 모드</strong> — GAS 서버 미연결<br>
-      테스트 계정: <strong>관리자 / admin1234</strong> &nbsp;|&nbsp; <strong>홍길동 / 1234</strong><br>
+      테스트 계정: <strong>마스터 / master1234</strong> &nbsp;|&nbsp; <strong>교향관리자 / admin1234</strong> &nbsp;|&nbsp; <strong>홍길동 / 1234</strong><br>
       <span style="font-size:.72rem;color:#b45309;">새로고침해도 데이터가 유지됩니다.</span>
       &nbsp;<button onclick="if(confirm('테스트 데이터를 초기화하시겠습니까?')){Object.keys(localStorage).filter(function(k){return k.indexOf('guntae_local_test_')===0;}).forEach(function(k){localStorage.removeItem(k);});location.reload();}" style="font-size:.7rem;padding:2px 8px;background:#f59e0b;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px;">데이터 초기화</button>
     </div>
@@ -646,13 +646,14 @@ tbody tr:last-child td{border-bottom:none;}
               <div class="fr">
                 <div class="fg"><label class="fl">시작일 <span class="rq">*</span></label><input type="date" class="fc" id="la-s"></div>
                 <div class="fg"><label class="fl">종료일 <span class="rq">*</span></label><input type="date" class="fc" id="la-e"></div>
+                <div id="la-date-warn" style="display:none;color:var(--acc4);font-size:.76rem;margin-top:-8px;padding:4px 2px;">⚠️ 주말·공휴일은 신청할 수 없습니다.</div>
               </div>
             </div>
             <div id="wrap-half" style="display:none;">
-              <div class="fg"><label class="fl">날짜 <span class="rq">*</span></label><input type="date" class="fc" id="la-hd"></div>
+              <div class="fg"><label class="fl">날짜 <span class="rq">*</span></label><input type="date" class="fc" id="la-hd" onchange="if(isNW(this.value))toast('주말·공휴일은 신청할 수 없습니다.','wt')"></div>
             </div>
             <div id="wrap-time" style="display:none;">
-              <div class="fg"><label class="fl">날짜 <span class="rq">*</span></label><input type="date" class="fc" id="la-td"></div>
+              <div class="fg"><label class="fl">날짜 <span class="rq">*</span></label><input type="date" class="fc" id="la-td" onchange="if(isNW(this.value))toast('주말·공휴일은 신청할 수 없습니다.','wt')"></div>
               <div class="fr">
                 <div class="fg"><label class="fl">시작 시간 <span class="rq">*</span></label><select class="fc" id="la-ts"></select></div>
                 <div class="fg"><label class="fl">종료 시간 <span class="rq">*</span></label><select class="fc" id="la-te"></select></div>
@@ -810,11 +811,19 @@ tbody tr:last-child td{border-bottom:none;}
         </div>
         <div style="display:flex;gap:7px;align-items:center;">
           <span id="inactive-badge" style="display:none;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;"></span>
+          <div style="display:flex;gap:8px;align-items:center;">
+          <select class="fc" id="emp-dept-filter" style="width:110px;" onchange="renderEmpTbl()">
+            <option value="">전체 소속</option>
+        <option value="교향악단">교향악단</option>
+        <option value="합창단">합창단</option>
+        <option value="공연단">공연단</option>
+          </select>
           <button class="btn bp" id="btn-addemp">직원 추가</button>
+        </div>
         </div>
       </div>
       <div class="card"><div class="tw"><table>
-        <thead><tr><th>이름</th><th>입사일</th><th>권한</th><th>연차배정</th><th>사용</th><th>잔여</th><th>자녀돌봄</th><th>병가</th><th>초과근무 단가</th><th>관리</th></tr></thead>
+        <thead><tr><th>이름</th><th>소속</th><th>입사일</th><th>권한</th><th>연차배정</th><th>사용</th><th>잔여</th><th>자녀돌봄</th><th>병가</th><th>초과근무 단가</th><th>관리</th></tr></thead>
         <tbody id="emp-tb"></tbody>
       </table></div></div>
     </div>
@@ -1054,7 +1063,7 @@ tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="mof">
       <button class="btn bs" data-close="mo-confirm">닫기</button>
-      <button class="btn bng" id="btn-confirm-ok">확인</button>
+      <button class="btn bng" id="btn-confirm-ok">취소 확인</button>
     </div>
   </div>
 </div>
@@ -1088,8 +1097,18 @@ tbody tr:last-child td{border-bottom:none;}
         <div class="fg"><label class="fl">자녀돌봄 배정(일) <span style="font-size:.7rem;color:var(--acc)">별도</span></label><input type="number" class="fc" id="ee-cc" min="0" max="20" step="1" value="3"></div>
         <div class="fg"><label class="fl">병가 배정(일) <span style="font-size:.7rem;color:var(--acc)">별도</span></label><input type="number" class="fc" id="ee-sl" min="0" max="120" step="1" value="60"></div>
       </div>
-      <div class="fg"><label class="fl">권한</label>
-        <select class="fc" id="ee-rl"><option value="employee">일반 직원</option><option value="approver">승인자</option><option value="admin">관리자</option></select>
+      <div class="fr">
+        <div class="fg"><label class="fl">소속 <span class="rq">*</span></label>
+          <select class="fc" id="ee-dept">
+            <option value="">소속 선택</option>
+              <option value="교향악단">교향악단</option>
+              <option value="합창단">합창단</option>
+              <option value="공연단">공연단</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">권한</label>
+          <select class="fc" id="ee-rl"><option value="employee">일반 직원</option><option value="approver">승인자</option><option value="admin">관리자</option><option value="master">마스터</option></select>
+        </div>
       </div>
       <div class="fg">
         <label class="fl">초과근무 시간당 수당 단가 <span style="font-size:.7rem;color:var(--acc)">개인별</span></label>
@@ -1119,7 +1138,19 @@ tbody tr:last-child td{border-bottom:none;}
         <div class="fg"><label class="fl">병가 배정(일)</label><input type="number" class="fc" id="ae-sl" value="60" min="0" max="120"></div>
       </div>
       <div class="fg"><label class="fl">권한</label>
-        <select class="fc" id="ae-rl"><option value="employee">일반 직원</option><option value="approver">승인자</option><option value="admin">관리자</option></select>
+        <div class="fr">
+          <div class="fg"><label class="fl">소속 <span class="rq">*</span></label>
+            <select class="fc" id="ae-dept">
+              <option value="">소속 선택</option>
+              <option value="교향악단">교향악단</option>
+              <option value="합창단">합창단</option>
+              <option value="공연단">공연단</option>
+            </select>
+          </div>
+          <div class="fg">
+            <select class="fc" id="ae-rl"><option value="employee">일반 직원</option><option value="approver">승인자</option><option value="admin">관리자</option><option value="master">마스터</option></select>
+          </div>
+        </div>
       </div>
       <div class="fg">
         <label class="fl">초과근무 시간당 수당 단가 <span style="font-size:.7rem;color:var(--acc)">개인별</span></label>
@@ -1283,10 +1314,10 @@ var otSettings = {
    ═══════════════════════════════════════════════════════════════ */
 
 /* 로컬 테스트 모드 — USE_LOCAL_MODE = true 시 GAS 없이 동작 */
-var USE_LOCAL_MODE = false;
+var USE_LOCAL_MODE = true;
 
 /* 로컬 테스트용 초기 데이터 (localStorage에서 복원, 없으면 기본값 사용) */
-var _LS_KEY = 'guntae_local_test_';
+var _LS_KEY = 'guntae_local_test_v2_';
 
 function _lsSave() {
   try {
@@ -1294,12 +1325,13 @@ function _lsSave() {
     localStorage.setItem(_LS_KEY+'leaves',  JSON.stringify(LOCAL_LEAVES));
     localStorage.setItem(_LS_KEY+'ot',      JSON.stringify(LOCAL_OT));
     localStorage.setItem(_LS_KEY+'notifs',  JSON.stringify(LOCAL_NOTIFS));
-    localStorage.setItem(_LS_KEY+'manuals', JSON.stringify(window._localManuals||[]));
+    localStorage.setItem(_LS_KEY+'manuals', JSON.stringify(LOCAL_MANUALS||[]));
     localStorage.setItem(_LS_KEY+'id',      String(_localId));
     /* GAS 캐시 키도 동기화 → _loadFromLocal()이 올바른 emps를 읽도록 */
     var sanitized = LOCAL_EMPS.map(_localSanitize).map(function(u){
       return {id:String(u.id),dbId:u.id,name:u.name,join:u.join_date,
-        role:({'admin':'admin','user':'employee','approver':'approver'})[u.role]||u.role,
+        role:({'admin':'admin','user':'employee','approver':'approver','master':'master'})[u.role]||u.role,
+        dept:u.dept||'',
         total:parseFloat(u.total_leaves)||0,usedD:parseFloat(u.used_leaves)||0,usedH:0,pw:'',
         ccTotal:parseInt(u.cc_total)||3,ccUsed:parseFloat(u.cc_used)||0,
         slTotal:parseInt(u.sl_total)||60,slUsed:parseFloat(u.sl_used)||0,
@@ -1321,7 +1353,7 @@ function _lsLoad() {
     if(sl) LOCAL_LEAVES  = JSON.parse(sl);
     if(so) LOCAL_OT      = JSON.parse(so);
     if(sn) LOCAL_NOTIFS  = JSON.parse(sn);
-    if(sm) window._localManuals = JSON.parse(sm);
+    if(sm) LOCAL_MANUALS = JSON.parse(sm);
     if(si) _localId = parseInt(si)||100;
     return !!se; /* true면 저장 데이터 있음 */
   } catch(e){ return false; }
@@ -1329,16 +1361,19 @@ function _lsLoad() {
 
 /* 기본 직원 데이터 */
 var _DEFAULT_EMPS = [
-  {id:1, name:'\uad00\ub9ac\uc790', role:'admin',    password:'admin1234', join_date:'2020-01-01', total_leaves:20, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:15000, ot_max_hours:10},
-  {id:2, name:'\ud64d\uae38\ub3d9', role:'user',     password:'1234',      join_date:'2022-03-01', total_leaves:15, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:12000, ot_max_hours:10},
-  {id:3, name:'\uae40\ucca0\uc218', role:'approver', password:'1234',      join_date:'2021-06-01', total_leaves:17, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:13000, ot_max_hours:10},
+  {id:1, name:'마스터',     role:'master',   password:'master1234', dept:'',          join_date:'2020-01-01', total_leaves:20, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:0,     ot_max_hours:10},
+  {id:2, name:'교향관리자', role:'admin',    password:'admin1234',  dept:'교향악단', join_date:'2020-03-01', total_leaves:20, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:15000, ot_max_hours:10},
+  {id:3, name:'홍길동',     role:'user',     password:'1234',        dept:'교향악단', join_date:'2022-03-01', total_leaves:15, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:12000, ot_max_hours:10},
+  {id:4, name:'합창관리자', role:'admin',    password:'admin1234',  dept:'합창단',   join_date:'2020-06-01', total_leaves:20, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:15000, ot_max_hours:10},
+  {id:5, name:'김철수',     role:'approver', password:'1234',        dept:'합창단',   join_date:'2021-06-01', total_leaves:17, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:13000, ot_max_hours:10},
+  {id:6, name:'이영희',     role:'user',     password:'1234',        dept:'공연단',   join_date:'2023-03-01', total_leaves:12, used_leaves:0, cc_total:3, cc_used:0, sl_total:60, sl_used:0, ot_rate:11000, ot_max_hours:10},
 ];
 
 var LOCAL_EMPS   = _DEFAULT_EMPS.map(function(e){ return Object.assign({},e); });
 var LOCAL_LEAVES = [];
 var LOCAL_OT     = [];
 var LOCAL_NOTIFS = [];
-if(!window._localManuals) window._localManuals = [];
+var LOCAL_MANUALS = [];
 var _localId = 100;
 
 /* 페이지 로드 시 localStorage 복원 */
@@ -1517,28 +1552,27 @@ function _localRoute(action, body) {
 
     /* 업무 인수 메뉴얼 */
     case 'getManuals':
-      return {ok:true, manuals: (window._localManuals||[]).slice().reverse()};
+      return {ok:true, manuals: (LOCAL_MANUALS||[]).slice().reverse()};
     case 'addManual': {
-      if(!window._localManuals) window._localManuals=[];
       var nm = Object.assign({}, body, {id:++_localId, created_at:now, updated_at:now});
       if(!nm.category) nm.category='\uae30\ud0c0';
       if(!nm.images) nm.images=[];
-      window._localManuals.push(nm);
+      LOCAL_MANUALS.push(nm);
       _lsSave();
       return {ok:true, manual:nm};
     }
     case 'updateManual': {
-      if(!window._localManuals) return {ok:false,error:'없음'};
-      var mi = window._localManuals.findIndex(function(x){return String(x.id)===String(body.id);});
+      if(!LOCAL_MANUALS) return {ok:false,error:'없음'};
+      var mi = LOCAL_MANUALS.findIndex(function(x){return String(x.id)===String(body.id);});
       if(mi<0) return {ok:false,error:'없음'};
-      Object.assign(window._localManuals[mi], body, {updated_at:now});
-      if(!window._localManuals[mi].images) window._localManuals[mi].images=[];
+      Object.assign(LOCAL_MANUALS[mi], body, {updated_at:now});
+      if(!LOCAL_MANUALS[mi].images) LOCAL_MANUALS[mi].images=[];
       _lsSave();
-      return {ok:true, manual:window._localManuals[mi]};
+      return {ok:true, manual:LOCAL_MANUALS[mi]};
     }
     case 'deleteManual': {
-      if(!window._localManuals) return {ok:true};
-      window._localManuals = window._localManuals.filter(function(x){return String(x.id)!==String(body.id);});
+      if(!LOCAL_MANUALS) return {ok:true};
+      LOCAL_MANUALS = LOCAL_MANUALS.filter(function(x){return String(x.id)!==String(body.id);});
       _lsSave();
       return {ok:true};
     }
@@ -1550,7 +1584,7 @@ function _localRoute(action, body) {
 
 function _localSanitize(u) {
   return {
-    id:u.id, name:u.name, role:u.role,
+    id:u.id, name:u.name, role:u.role, dept:u.dept||'',
     join_date: u.join_date ? String(u.join_date).slice(0,10) : '',
     total_leaves: parseFloat(u.total_leaves)||0,
     used_leaves:  parseFloat(u.used_leaves)||0,
@@ -1563,7 +1597,7 @@ function _localSanitize(u) {
   };
 }
 
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbw5BU4aaBVxI4XPlzYiGnPAT7-3l_Aq4fhFD-d5HQLalPPWtqYkZji1F2Onnj4M4dqi/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbyj-2pwZCvFfmQq6jCnq33f4QJMxT7nPqP_VrnbcXNKS4ATyyYLizRagxbDCKi513q7/exec';
 
 /* ── API 헬퍼 (GAS 기반) ── */
 function _gasGet(params) {
@@ -1638,19 +1672,26 @@ function apiDel(path) {
 
 function dbUserToEmp(u){
 
-  var roleMap = {'admin':'admin','user':'employee','approver':'approver','Admin':'admin','User':'employee','Approver':'approver'};
+  var roleMap = {'admin':'admin','user':'employee','approver':'approver','master':'master','Admin':'admin','User':'employee','Approver':'approver','Master':'master'};
+  var mappedRole = roleMap[u.role] || u.role;
   return {
-    id: String(u.id),        // 모바일은 string id 사용
-    dbId: u.id,              // DB PK 보존
-    name: u.name,
-    join:     u.join_date ? String(u.join_date).slice(0,10) : '',
-    role: roleMap[u.role] || u.role,
-    total: u.total_leaves,
-    usedD: u.used_leaves,
+    id:    String(u.id),
+    dbId:  u.id,
+    name:  u.name,
+    join:  u.join_date ? String(u.join_date).slice(0,10) : '',
+    role:  mappedRole,
+    dept:  u.dept || '',
+    isMaster: mappedRole === 'master',
+    total: parseFloat(u.total_leaves)||0,
+    usedD: parseFloat(u.used_leaves)||0,
     usedH: 0,
-    pw: '',                  // 보안상 클라이언트에 저장 안 함
-    ccTotal: 3, ccUsed: 0,
-    slTotal: 60, slUsed: 0
+    pw:    '',
+    ccTotal:    parseInt(u.cc_total)||3,
+    ccUsed:     parseFloat(u.cc_used)||0,
+    slTotal:    parseInt(u.sl_total)||60,
+    slUsed:     parseFloat(u.sl_used)||0,
+    otRate:     parseInt(u.ot_rate)||0,
+    otMaxHours: parseInt(u.ot_max_hours)||10
   };
 }
 
@@ -1661,14 +1702,14 @@ function dbLeaveToLocal(r){
   return {
     id: r.id,
     empId: String(r.user_id),
-    empNm: r.user_name || '',
+    empNm: r.user_name || (function(){ var e=emps.find(function(x){return String(x.id)===String(r.user_id)||String(x.dbId)===String(r.user_id);}); return e?e.name:''; })()||'',
     type: r.leave_type,
     sd: r.start_date ? String(r.start_date).slice(0,10) : '',
     ed: r.end_date ? String(r.end_date).slice(0,10) : '',
     wd: r.days,
     wh: parseFloat(r.hours_used)||0,
-    st: r.start_time || '',
-    et: r.end_time || '',
+    st: r.start_time ? fmtSheetTime(r.start_time) : '',
+    et: r.end_time   ? fmtSheetTime(r.end_time)   : '',
     rsn: r.reason || '',
     status: statusMap[r.status] || r.status,
     appAt: r.approved_at ? r.approved_at.slice(0,10) : '',
@@ -1683,10 +1724,10 @@ function dbOtToLocal(r){
   return {
     id: r.id,
     empId: String(r.user_id),
-    empNm: r.user_name || '',
+    empNm: r.user_name || (function(){ var e=emps.find(function(x){return String(x.id)===String(r.user_id)||String(x.dbId)===String(r.user_id);}); return e?e.name:''; })()||'',
     dt: r.work_date ? String(r.work_date).slice(0,10) : '',
-    start: r.start_time,
-    end: r.end_time,
+    start: r.start_time ? fmtSheetTime(r.start_time) : '',
+    end:   r.end_time   ? fmtSheetTime(r.end_time)   : '',
     hours: parseFloat(r.hours)||0,
     desc: r.description || '',
     note: r.note || '',
@@ -1765,8 +1806,37 @@ function _loadFromLocal(){
 }
 
 /* ── UTILS ── */
+
+/* ── 소속(dept) 접근 제어 ──────────────────────────────────
+   master: 모든 소속 접근 가능
+   admin/approver: 같은 dept 소속만 접근 가능
+   ────────────────────────────────────────────────────── */
+function canAccessEmp(emp) {
+  if(!CU) return false;
+  if(CU.role==='master') return true;          /* master: 전체 */
+  if(!CU.dept) return true;                    /* dept 미설정 시 전체 허용 */
+  return (emp.dept||'') === (CU.dept||'');     /* 같은 소속만 */
+}
+function filterByDept(list) {
+  if(!CU || CU.role==='master' || !CU.dept) return list;
+  return list.filter(function(r) {
+    /* leaves/ot 항목: empId로 직원 찾아 dept 비교 */
+    var e = getEmpById(r.empId) || emps.find(function(x){ return String(x.dbId)===String(r.empId); });
+    if(!e) return true; /* 직원 못 찾으면 표시 허용 */
+    return (e.dept||'') === (CU.dept||'');
+  });
+}
 function g(id){ return document.getElementById(id); }
 function todayS(){ return new Date().toISOString().slice(0,10); }
+function fmtSheetTime(v) {
+  if(!v) return '';
+  var s = String(v);
+  if(/^\d{1,2}:\d{2}$/.test(s)) return s;
+  /* Sheets ISO Date 형식: 1899-12-30T08:32:00.000Z */
+  var m = s.match(/T(\d{2}):(\d{2})/);
+  if(m) return m[1]+':'+m[2];
+  return s.slice(0,5);
+}
 function fmtD(s){
   if(!s) return '-';
   /* ISO 8601 (2026-03-17T15:00:00.000Z) 포함 정규화 */
@@ -1782,7 +1852,6 @@ function fmtH(h){
 }
 function fmtAmt(d,h){ return d ? (d+'\uc77c') : (h ? fmtH(h) : '-'); }
 function isHol(s){ return HOL.indexOf(s) > -1; }
-function isDow(s, d){ return new Date(s).getDay() === d; }
 function isNW(s){ var dw=new Date(s).getDay(); return dw===0||dw===6||isHol(s); }
 function wdays(s,e){
   var cnt=0, d=new Date(s), ed=new Date(e);
@@ -2406,6 +2475,9 @@ window.catColor = catColor;
 window.escHtml = escHtml;
 /* ── 추가 전역 등록 ── */
 window.updateResetBtn = updateResetBtn;
+window.isNW = isNW;
+window.renderEmpTbl = renderEmpTbl;
+window.toast = toast;
 
 
 /* 이벤트 바인딩 */
@@ -2428,14 +2500,16 @@ window.updateResetBtn = updateResetBtn;
   var btnDel = g('btn-manual-delete');
   if(btnDel) btnDel.addEventListener('click', function(){
     if(!_manualEditId) return;
-    if(!confirm('\uc774 \uba54\ub274\uc5bc\uc744 \uc0ad\uc81c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?')) return;
-    _gasPost('deleteManual',{id:_manualEditId}).then(function(res){
-      if(!res.ok){toast(res.error||'\uc0ad\uc81c \uc2e4\ud328','er');return;}
-      manuals=manuals.filter(function(x){return String(x.id)!==String(_manualEditId);});
-      toast('\uba54\ub274\uc5bc\uc774 \uc0ad\uc81c\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok');
-      showManualView('manual-list-view');
-      renderManualList();
-    }).catch(function(){toast('\uc11c\ubc84 \uc5f0\uacb0 \uc624\ub958','er');});
+    /* confirm() 대신 커스텀 모달 사용 */
+    g('confirm-title').textContent = '\uba54\ub274\uc5bc \uc0ad\uc81c';
+    g('confirm-msg').textContent = '\uc774 \uba54\ub274\uc5bc\uc744 \uc0ad\uc81c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c? \uc0ad\uc81c\ud55c \ub370\uc774\ud130\ub294 \ubcf5\uad6c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.';
+    var confirmBtn = g('btn-confirm-ok');
+    if(confirmBtn) {
+      confirmBtn.textContent = '\uc0ad\uc81c';
+      confirmBtn.className = 'btn bng';
+    }
+    _cancelType = 'manual'; /* 삭제 플래그 */
+    openM('mo-confirm');
   });
 
   var btnSave = g('btn-manual-save');
@@ -2460,8 +2534,8 @@ window.updateResetBtn = updateResetBtn;
         if(idx>-1) manuals[idx]=res.manual;
       } else {
         manuals.unshift(res.manual);
-      _manualImgs=[];
       }
+      _manualImgs=[];
       toast('\uba54\ub274\uc5bc\uc774 \uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok');
       showManualView('manual-list-view');
       renderManualList();
@@ -2530,18 +2604,19 @@ function initApp(){
   g('sbr').textContent=CU.role==='admin'?'\uad00\ub9ac\uc790':CU.role==='approver'?'\uc2b9\uc778\uc790':'\uc9c1\uc6d0';
   g('topav').textContent=CU.name[0]; g('topav').style.background=avc(CU.name);
   g('topnm').textContent=CU.name;
-  g('nav-appr').style.display=(CU.role==='approver')?'':'none';
-  g('nav-adm').style.display=CU.role==='admin'?'':'none';
+  g('nav-appr').style.display=(CU.role==='approver')?'':'none'; /* admin/master는 nav-adm의 승인대기 사용 */
+  g('nav-adm').style.display=(CU.role==='admin'||CU.role==='master')?'':'none';
   /* 직원용 메뉴: 관리자에게는 숨김 */
-  var isAdmin=(CU.role||'').toLowerCase()==='admin';
+  var isAdmin=(CU.role==='admin'||CU.role==='master');
+  var isMaster=CU.role==='master';
   var empLv=g('nav-emp-lv'), empOt=g('nav-emp-ot');
-  if(empLv) empLv.style.display=isAdmin?'none':'';
-  if(empOt) empOt.style.display=isAdmin?'none':'';
+  if(empLv) empLv.style.display=(isAdmin||isMaster)?'none':'';
+  if(empOt) empOt.style.display=(isAdmin||isMaster)?'none':'';
   /* 관리자는 로그인 후 직원관리 페이지로 이동 */
   /* 초기화 버튼: 관리자만 표시 (대소문자 무관) */
   var rdb=g('btn-reset-data');
   if(rdb){
-    rdb.style.setProperty('display', isAdmin?'flex':'none', 'important');
+    rdb.style.setProperty('display', (isAdmin||isMaster)?'flex':'none', 'important');
   }
   /* 관리자 승인대기 뱃지 동기화 */
   var pcntAdm=g('pcnt-adm');
@@ -2554,7 +2629,7 @@ function initApp(){
   g('al-emp').innerHTML=eop; g('ao-emp').innerHTML=eop;
   onTypeChg(); calcLeave(); updPend(); updND(); renderNI();
   /* 역할별 시작 페이지 */
-  goPage(isAdmin ? 'adm-emp' : 'lv-dash');
+  goPage((isAdmin||isMaster) ? 'adm-emp' : 'lv-dash');
 }
 
 /* ── LEAVE FORM ── */
@@ -2608,7 +2683,17 @@ function calcLeave(){
 
   // 사용 예정
   var wd=0, wh=0;
-  if(u==='day'){ var s=g('la-s').value, e=g('la-e').value; if(s&&e&&s<=e) wd=wdays(s,e); g('la-use').textContent=wd+'\uc77c'; }
+  if(u==='day'){
+    var s=g('la-s').value, e=g('la-e').value;
+    /* 단일 날짜 주말/공휴일 경고 */
+    var laWarn=g('la-date-warn');
+    if(laWarn){
+      if(s && s===e && isNW(s)) laWarn.style.display='';
+      else if(s && !e && isNW(s)) laWarn.style.display='';
+      else laWarn.style.display='none';
+    }
+    if(s&&e&&s<=e) wd=wdays(s,e); g('la-use').textContent=wd+'\uc77c';
+  }
   else if(u==='half'){ wd=0.5; g('la-use').textContent='0.5\uc77c'; }
   else {
     var ts=g('la-ts').value, te=g('la-te').value;
@@ -2648,6 +2733,8 @@ g('btn-la').addEventListener('click', function(){
     sd=g('la-s').value; ed=g('la-e').value;
     if(!sd||!ed){ toast('날짜를 입력해 주세요.','wt'); return; }
     if(sd>ed){ toast('종료일이 시작일보다 빠릅니다.','wt'); return; }
+    /* 단일 날짜인 경우 주말/공휴일 직접 차단 */
+    if(sd===ed && isNW(sd)){ toast('주말·공휴일은 신청할 수 없습니다.','wt'); return; }
     wd=wdays(sd,ed); if(wd===0){ toast('선택 기간에 근무일이 없습니다.','wt'); return; }
     var dup=leaves.filter(function(r){ if(String(r.empId)!==String(CU.id)||r.status==='반려') return false; return r.sd<=ed && (r.ed||r.sd)>=sd; });
     if(dup.length){ toast('이미 신청된 휴가와 날짜가 중복됩니다. ('+fmtD(dup[0].sd)+')','er'); return; }
@@ -2805,7 +2892,7 @@ function renderHM(){
   tb.innerHTML=d.map(function(r){
     var pr=fmtD(r.sd)+(r.ed&&r.ed!==r.sd?' ~ '+fmtD(r.ed):''+(r.st?'<br><span style="font-size:.7rem;color:var(--acc);">'+r.st+'~'+r.et+'</span>':''));
     var cancelBtn=r.status==='\ub300\uae30'
-      ?'<button class="btn bng bxs" onclick="cancelLeave('+r.id+')">\ucde8\uc18c</button>'
+      ?'<button class="btn bng bxs" onclick="cancelLeave('+r.id+')">\ucde8\uc18c \uc2e0\uccad</button>'
       :'';
     return '<tr><td>'+fmtD(r.appAt)+'</td><td>'+chip(r.type)+'</td><td>'+pr+'</td><td>'+fmtAmt(r.wd,r.wh)+'</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.rsn+'</td><td>'+bdg(r.status)+'</td><td style="font-size:.73rem;color:var(--txt2);">'+(r.apvAt?fmtD(r.apvAt):'-')+'</td><td>'+cancelBtn+'</td></tr>';
   }).join('');
@@ -2849,6 +2936,22 @@ window.cancelOT = function(id){
 };
 
 g('btn-confirm-ok').addEventListener('click', function(){
+  if(_cancelType === 'manual'){
+    /* 메뉴얼 삭제 */
+    var mid = _manualEditId;
+    _cancelId = null; _cancelType = null;
+    var cb=g('btn-confirm-ok'); if(cb){cb.textContent='\ucde8\uc18c \ud655\uc778'; cb.className='btn bng';}
+    closeM('mo-confirm');
+    if(!mid) return;
+    _gasPost('deleteManual',{id:mid}).then(function(res){
+      if(!res.ok){toast(res.error||'\uc0ad\uc81c \uc2e4\ud328','er');return;}
+      manuals=manuals.filter(function(x){return String(x.id)!==String(mid);});
+      toast('\uba54\ub274\uc5bc\uc774 \uc0ad\uc81c\ub418\uc5c8\uc2b5\ub2c8\ub2e4.','ok');
+      showManualView('manual-list-view');
+      renderManualList();
+    }).catch(function(){toast('\uc11c\ubc84 \uc5f0\uacb0 \uc624\ub958','er');});
+    return;
+  }
   if(_cancelType === 'lv' && _cancelId !== null){
     var r = leaves.find(function(x){ return x.id === _cancelId; });
     if(r){
@@ -2857,7 +2960,7 @@ g('btn-confirm-ok').addEventListener('click', function(){
           if(!res.ok){ toast(res.error||'취소 실패','er'); return; }
           leaves = leaves.filter(function(x){ return x.id !== _cancelId; });
           saveData(); updPend();
-          toast(r.type + ' 신청이 취소되었습니다.', 'ok');
+          toast(r.type + ' 취소 완료되었습니다.', 'ok');
           renderHM(); renderHY();
         })
         .catch(function(){ toast('서버 연결 오류','er'); });
@@ -2870,13 +2973,15 @@ g('btn-confirm-ok').addEventListener('click', function(){
           if(!res.ok){ toast(res.error||'취소 실패','er'); return; }
           otList = otList.filter(function(x){ return x.id !== _cancelId; });
           saveData(); updPend();
-          toast('초과근무 신청이 취소되었습니다.', 'ok');
+          toast('초과근무 취소 완료되었습니다.', 'ok');
           renderOH();
         })
         .catch(function(){ toast('서버 연결 오류','er'); });
     }
   }
   _cancelId = null; _cancelType = null;
+  /* 확인 버튼 원래 문구 복원 */
+  var cb=g('btn-confirm-ok'); if(cb){cb.textContent='\ucde8\uc18c \ud655\uc778'; cb.className='btn bng';}
   closeM('mo-confirm');
 });
 
@@ -2942,7 +3047,7 @@ function renderYY(){
   if(!all.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--txt3)">\ub0b4\uc5ed\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';return;}
   tb.innerHTML=all.map(function(r){
     var pr=fmtD(r.sd)+(r.ed&&r.ed!==r.sd?' ~ '+fmtD(r.ed):''+(r.st?' '+r.st+'~'+r.et:''));
-    var cancelBtn=r.status==='\ub300\uae30'?'<button class="btn bng bxs" onclick="cancelLeave('+r.id+')">\ucde8\uc18c</button>':'';
+    var cancelBtn=r.status==='\ub300\uae30'?'<button class="btn bng bxs" onclick="cancelLeave('+r.id+')">\ucde8\uc18c \uc2e0\uccad</button>':'';
     return '<tr><td>'+fmtD(r.appAt)+'</td><td>'+chip(r.type)+'</td><td>'+pr+'</td><td>'+fmtAmt(r.wd,r.wh)+'</td><td>'+r.rsn+'</td><td>'+bdg(r.status)+'</td><td>'+cancelBtn+'</td></tr>';
   }).join('');
 }
@@ -3094,11 +3199,6 @@ function resetOT(){
 }
 g('btn-ot-rst').addEventListener('click',resetOT);
 
-function fmtOTNote(n){
-  // HH:MM 또는 H:MM 형식 검증 후 반환
-  if(!n||!n.trim()) return '';
-  return n.trim();
-}
 function parseNoteMin(n){
   // "H:MM" → 분으로 변환
   if(!n||!n.trim()) return 0;
@@ -3253,12 +3353,15 @@ function updPend(){
   updND();
 }
 function renderAppr(){
-  var pl=leaves.filter(function(r){return r.status==='\ub300\uae30';}), tb=g('apl-tb');
+  var pl=filterByDept(leaves.filter(function(r){return r.status==='대기';})), tb=g('apl-tb');
   if(!pl.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--txt3)">\ub300\uae30 \uc911\uc778 \ud734\uac00 \uc2e0\uccad\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';}
-  else tb.innerHTML=pl.map(function(r){return '<tr><td><strong>'+r.empNm+'</strong></td><td>'+chip(r.type)+'</td><td>'+fmtD(r.sd)+(r.ed&&r.ed!==r.sd?' ~ '+fmtD(r.ed):''+(r.st?' '+r.st+'~'+r.et:''))+'</td><td>'+fmtAmt(r.wd,r.wh)+'</td><td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.rsn+'</td><td>'+fmtD(r.appAt)+'</td><td><div style="display:flex;gap:4px;"><button class="btn bok bxs" onclick="apvLv('+r.id+')">\u2713 \uc2b9\uc778</button><button class="btn bng bxs" onclick="openRej('+r.id+',\'lv\')">\u2715 \ubc18\ub824</button></div></td></tr>';}).join('');
-  var po=otList.filter(function(r){return r.status==='\ub300\uae30';}), tb2=g('apo-tb');
+  else tb.innerHTML=pl.map(function(r){var nm=r.empNm||(getEmpById(r.empId)&&getEmpById(r.empId).name)||r.empId||'-';
+    var pr=fmtD(r.sd)+(r.ed&&r.ed!==r.sd?' ~ '+fmtD(r.ed):'')+(r.st&&r.st.length<=5?' '+r.st+'~'+r.et:'');
+    return '<tr><td><div style="display:flex;align-items:center;gap:5px;"><div class="av" style="background:'+avc(nm)+';width:22px;height:22px;font-size:.62rem;">'+nm[0]+'</div><strong>'+nm+'</strong></div></td><td>'+chip(r.type)+'</td><td>'+pr+'</td><td>'+fmtAmt(r.wd,r.wh)+'</td><td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.rsn+'</td><td>'+fmtD(r.appAt)+'</td><td><div style="display:flex;gap:4px;"><button class="btn bok bxs" onclick="apvLv('+r.id+')">\u2713 \uc2b9\uc778</button><button class="btn bng bxs" onclick="openRej('+r.id+',\'lv\')">\u2715 \ubc18\ub824</button></div></td></tr>';}).join('');
+  var po=filterByDept(otList.filter(function(r){return r.status==='대기';})), tb2=g('apo-tb');
   if(!po.length){tb2.innerHTML='<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--txt3)">\ub300\uae30 \uc911\uc778 \ucd08\uacfc\uadfc\ubb34 \uc2e0\uccad\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';}
-  else tb2.innerHTML=po.map(function(r){return '<tr><td><strong>'+r.empNm+'</strong></td><td>'+fmtD(r.dt)+'</td><td style="font-family:\'DM Mono\'">'+r.start+'~'+r.end+' ('+fmtH(r.hours)+')</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.desc+'</td><td>'+fmtD(r.appAt)+'</td><td><div style="display:flex;gap:4px;"><button class="btn bok bxs" onclick="apvOT('+r.id+')">\u2713 \uc2b9\uc778</button><button class="btn bng bxs" onclick="openRej('+r.id+',\'ot\')">\u2715 \ubc18\ub824</button></div></td></tr>';}).join('');
+  else tb2.innerHTML=po.map(function(r){var nmo=r.empNm||(getEmpById(r.empId)&&getEmpById(r.empId).name)||r.empId||'-';
+    return '<tr><td><div style="display:flex;align-items:center;gap:5px;"><div class="av" style="background:'+avc(nmo)+';width:22px;height:22px;font-size:.62rem;">'+nmo[0]+'</div><strong>'+nmo+'</strong></div></td><td>'+fmtD(r.dt)+'</td><td style="font-family:\'DM Mono\'">'+r.start+'~'+r.end+' ('+fmtH(r.hours)+')</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.desc+'</td><td>'+fmtD(r.appAt)+'</td><td><div style="display:flex;gap:4px;"><button class="btn bok bxs" onclick="apvOT('+r.id+')">\u2713 \uc2b9\uc778</button><button class="btn bng bxs" onclick="openRej('+r.id+',\'ot\')">\u2715 \ubc18\ub824</button></div></td></tr>';}).join('');
   updPend();
 }
 window.apvLv=function(id){
@@ -3341,7 +3444,11 @@ function renderEmpTbl(){
     if(inactiveCnt>0){ badge.textContent='비활성 '+inactiveCnt+'명'; badge.style.display=''; }
     else badge.style.display='none';
   }
-  g('emp-tb').innerHTML=emps.map(function(e){
+    var deptF=g('emp-dept-filter')?g('emp-dept-filter').value:'';
+  g('emp-tb').innerHTML=emps.filter(canAccessEmp).filter(function(e){
+    if(deptF && (e.dept||'')!==deptF) return false;
+    return true;
+  }).map(function(e){
     var ri=remInfo(e);
     var ccT=(e.ccTotal!==undefined&&e.ccTotal!==null)?e.ccTotal:3;
     var ccU=leaves.filter(function(r){return r.empId===e.id&&r.type==='\uc790\ub140\ub3cc\ubd04'&&r.status==='\uc2b9\uc778';}).reduce(function(a,r){return a+(r.wd||0);},0);
@@ -3359,6 +3466,7 @@ function renderEmpTbl(){
       : '';
     return '<tr style="'+rowStyle+'">'
       +'<td><div style="display:flex;align-items:center;gap:7px;"><div class="av" style="background:'+(isInactive?'#94a3b8':avc(e.name))+';width:28px;height:28px;font-size:.72rem;">'+e.name[0]+'</div><strong>'+e.name+'</strong>'+nameBadge+'</div></td>'
+      +'<td><span style="background:var(--bg);border:1px solid var(--bdr);border-radius:4px;padding:2px 8px;font-size:.72rem;color:var(--txt2);">'+( e.dept||'-')+'</span></td>'
       +'<td>'+fmtD(e.join)+'</td>'
       +'<td>'+roleBdg+'</td>'
       +'<td style="font-family:\'DM Mono\'">'+e.total+'일</td>'
@@ -3397,6 +3505,7 @@ window.openEE=function(id){
   g('ee-cc').value=(e.ccTotal!==undefined && e.ccTotal!==null) ? e.ccTotal : 3;
   g('ee-sl').value=(e.slTotal!==undefined && e.slTotal!==null) ? e.slTotal : 60;
   g('ee-rl').value=e.role;
+  if(g('ee-dept')) g('ee-dept').value=e.dept||'';
   g('ee-rate').value=(e.otRate!==undefined && e.otRate!==null) ? e.otRate : 0;
   openM('mo-eemp');
 };
@@ -3410,15 +3519,25 @@ g('btn-eeok').addEventListener('click',function(){
   var ccVal=g('ee-cc').value.trim();
   var slVal=g('ee-sl').value.trim();
   var rateVal=parseInt(g('ee-rate').value)||0;
+  var maxHVal=g('ee-maxh')?(parseInt(g('ee-maxh').value)||10):(e.otMaxHours||10);
 
-  apiPut('/api/users/'+e.dbId,{total_leaves:newTotal,join_date:newJoin,role:dbRole})
+  var newCcTotal=(ccVal!==''&&!isNaN(parseInt(ccVal)))?parseInt(ccVal):(e.ccTotal||3);
+  var newSlTotal=(slVal!==''&&!isNaN(parseInt(slVal)))?parseInt(slVal):(e.slTotal||60);
+
+  var newDept=g('ee-dept')?g('ee-dept').value:e.dept||'';
+  apiPut('/api/users/'+e.dbId,{
+    total_leaves:newTotal, join_date:newJoin, role:dbRole, dept:newDept,
+    cc_total:newCcTotal, sl_total:newSlTotal,
+    ot_rate:rateVal, ot_max_hours:maxHVal
+  })
     .then(function(res){
       if(!res.ok){ toast(res.error||'수정 실패','er'); return; }
       /* 로컬 동기화 */
-      e.join=newJoin; e.total=newTotal; e.role=newRole;
-      e.ccTotal=(ccVal!==''&&!isNaN(parseInt(ccVal)))?parseInt(ccVal):(e.ccTotal||3);
-      e.slTotal=(slVal!==''&&!isNaN(parseInt(slVal)))?parseInt(slVal):(e.slTotal||60);
+      e.join=newJoin; e.total=newTotal; e.role=newRole; e.dept=newDept;
+      e.ccTotal=newCcTotal;
+      e.slTotal=newSlTotal;
       e.otRate=rateVal;
+      e.otMaxHours=maxHVal;
       saveData();
       closeM('mo-eemp');
       toast(e.name+'님 정보가 수정되었습니다.','ok');
@@ -3476,6 +3595,7 @@ g('btn-aeok').addEventListener('click',function(){
   var dbRole=(newRole==='admin')?'admin':(newRole==='approver')?'approver':'user';
   apiPost('/api/users',{
     name:nm, password:'1234', role:dbRole,
+    dept:g('ae-dept')?g('ae-dept').value:'',
     join_date:g('ae-jn').value||todayS(),
     total_leaves:parseFloat(g('ae-dy').value)||15
   })
@@ -3483,6 +3603,7 @@ g('btn-aeok').addEventListener('click',function(){
     if(!res.ok){ toast(res.error||'추가 실패','er'); return; }
     var newEmp=dbUserToEmp(res.user);
     newEmp.role=newRole;
+    newEmp.dept=g('ae-dept')?g('ae-dept').value:'';
     newEmp.ccTotal=parseInt(g('ae-cc').value)||3;
     newEmp.slTotal=parseInt(g('ae-sl').value)||60;
     newEmp.otRate=parseInt(g('ae-rate').value)||0;
@@ -3497,8 +3618,9 @@ g('btn-aeok').addEventListener('click',function(){
   .catch(function(){ toast('서버 연결 오류','er'); });
 });
 function renderAL(){
+  var deptLeaves=filterByDept(leaves);
   var ef=g('al-emp').value, yr=parseInt(g('al-yr').value), mo=g('al-mo').value, st=g('al-st').value;
-  var d=leaves.filter(function(r){ if(ef&&r.empId!==ef)return false; var dt=new Date(r.sd); if(dt.getFullYear()!==yr)return false; if(mo!==''&&dt.getMonth()!==parseInt(mo))return false; if(st&&r.status!==st)return false; return true; }).sort(function(a,b){return b.id-a.id;});
+  var d=deptLeaves.filter(function(r){ if(ef&&r.empId!==ef)return false; var dt=new Date(r.sd); if(dt.getFullYear()!==yr)return false; if(mo!==''&&dt.getMonth()!==parseInt(mo))return false; if(st&&r.status!==st)return false; return true; }).sort(function(a,b){return b.id-a.id;});
   var tb=g('al-tb');
   if(!d.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--txt3)">\ub0b4\uc5ed\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';return;}
   tb.innerHTML=d.map(function(r){
@@ -3510,8 +3632,9 @@ function renderAL(){
 window.renderAL=renderAL;
 
 function renderAO(){
+  var deptOT=filterByDept(otList);
   var ef=g('ao-emp').value, yr=parseInt(g('ao-yr').value), mo=g('ao-mo').value;
-  var d=otList.filter(function(r){
+  var d=deptOT.filter(function(r){
     if(ef&&r.empId!==ef) return false;
     var dt=new Date(r.dt);
     if(dt.getFullYear()!==yr) return false;
