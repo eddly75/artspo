@@ -1262,6 +1262,40 @@ tbody tr:last-child td{border-bottom:none;}
 document.addEventListener('DOMContentLoaded', function() {
 'use strict';
 
+/* ── 새로고침 후 자동 로그인 복원 ── */
+(function(){
+  try {
+    var scu = localStorage.getItem('guntae_cu');
+    if(scu){
+      var pcu = JSON.parse(scu);
+      if(pcu && pcu.id && pcu.name){
+        CU = pcu;
+        var se=localStorage.getItem('guntae_emps'); if(se){var pe=JSON.parse(se);if(pe.length)emps=pe;}
+        var sl=localStorage.getItem('guntae_leaves');if(sl)leaves=JSON.parse(sl);
+        var so=localStorage.getItem('guntae_ot');    if(so)otList=JSON.parse(so);
+        var sn=localStorage.getItem('guntae_notifs');if(sn)notifs=JSON.parse(sn);
+        g('login-wrap').style.display='none';
+        g('app').style.display='block';
+        initApp();
+        /* 백그라운드 데이터 갱신 */
+        Promise.all([apiGet('/api/users'),apiGet('/api/leaves'),apiGet('/api/ot')])
+          .then(function(results){
+            if(results[0].ok) emps = results[0].users.map(dbUserToEmp);
+            if(results[1].ok) leaves = results[1].leaves.map(dbLeaveToLocal);
+            if(results[2].ok) otList = results[2].ot.map(dbOtToLocal);
+            var refreshed=emps.find(function(e){return String(e.id)===String(CU.id)||String(e.dbId)===String(CU.dbId);});
+            if(refreshed){
+              var sid=CU.dbId; var cid=CU.id;
+              CU=refreshed; CU.dbId=sid; CU.id=cid;
+            }
+            saveData(); renderDash(); updND(); renderNI(); updPend();
+          }).catch(function(){});
+      }
+    }
+  } catch(ex){}
+})();
+
+
 /* 로컬 테스트 모드 초기화 */
 if(USE_LOCAL_MODE){
   var lb=document.getElementById('local-banner');
@@ -1598,7 +1632,7 @@ function _localSanitize(u) {
   };
 }
 
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbwwzULYuEjk31t9Z2cseV7D1QnHhuL5vikw7TTPLiQfIOwQllis7fn81D0FIS_umGmd/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbyklSQ83h8E2kwihWT4_tQ3cTyiInFQlwaN50sijQ0HZXAH5vF6Y7U5nyXaAOpVFmcr/exec';
 
 /* ── API 헬퍼 (GAS 기반) ── */
 function _gasGet(params) {
@@ -1610,10 +1644,12 @@ function _gasGet(params) {
 }
 function _gasPost(action, body) {
   if(USE_LOCAL_MODE) return _localPost(action, body||{});
-  /* GAS CORS: GET 방식으로 payload 전송 */
-  var encoded = encodeURIComponent(JSON.stringify(body||{}));
-  var url = GAS_URL + '?action=' + action + '&payload=' + encoded;
-  return fetch(url).then(function(r){return r.json();});
+  /* POST 방식으로 전송 — URL 길이 제한 없음, 데이터 안전 */
+  return fetch(GAS_URL + '?action=' + action, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body||{})
+  }).then(function(r){ return r.json(); });
 }
 
 /* GET 래퍼들 — GAS 액션 매핑 */
@@ -1749,6 +1785,7 @@ function saveData(){
     localStorage.setItem('guntae_notifs', JSON.stringify(notifs));
     localStorage.setItem('guntae_nidx',   String(nidx));
     localStorage.setItem('guntae_otset',  JSON.stringify(otSettings));
+    if(CU) localStorage.setItem('guntae_cu', JSON.stringify(CU));
   }catch(e){}
   /* ※ 실제 저장은 각 액션에서 GAS API 호출로 개별 처리됩니다 */
 }
@@ -1798,6 +1835,7 @@ function loadData(){
 function _loadFromLocal(){
   try{
     var se=localStorage.getItem('guntae_emps'); if(se) { var parsed=JSON.parse(se); if(parsed.length) emps=parsed; }
+    var scu=localStorage.getItem('guntae_cu'); if(scu){ var pcu=JSON.parse(scu); if(pcu&&pcu.id) CU=pcu; }
     var sl=localStorage.getItem('guntae_leaves'); if(sl) leaves=JSON.parse(sl);
     var so=localStorage.getItem('guntae_ot'); if(so) otList=JSON.parse(so);
     var sn=localStorage.getItem('guntae_notifs'); if(sn) notifs=JSON.parse(sn);
@@ -1854,6 +1892,20 @@ function fmtH(h){
 function fmtAmt(d,h){ return d ? (d+'\uc77c') : (h ? fmtH(h) : '-'); }
 function isHol(s){ return HOL.indexOf(s) > -1; }
 function isNW(s){ var dw=new Date(s).getDay(); return dw===0||dw===6||isHol(s); }
+function alldays(s,e){
+  /* 주말·공휴일 포함 달력일수 */
+  var d=new Date(s), ed=new Date(e), cnt=0;
+  while(d<=ed){ cnt++; d.setDate(d.getDate()+1); }
+  return cnt;
+}
+function sldays(s,e){
+  /* 병가 일수 계산:
+     달력일수 30일 이상 → 주말·공휴일 포함 (달력일수)
+     달력일수 29일 이하 → 주말·공휴일 제외 (근무일수) */
+  var cal = alldays(s,e);
+  if(cal >= 30) return cal;   /* 30일 이상: 달력일수 */
+  return wdays(s,e);          /* 29일 이하: 근무일수 */
+}
 function wdays(s,e){
   var cnt=0, d=new Date(s), ed=new Date(e);
   while(d<=ed){ if(!isNW(d.toISOString().slice(0,10))) cnt++; d.setDate(d.getDate()+1); }
@@ -2088,7 +2140,7 @@ g('btn-login').addEventListener('click', doLogin);
 g('inp-name').addEventListener('keydown', function(e){ if(e.key==='Enter') g('inp-pw').focus(); });
 g('inp-pw').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 
-function doLogout(){ CU=null; g('login-wrap').style.display='flex'; g('app').style.display='none'; g('inp-name').value=''; g('inp-pw').value=''; g('lerr').textContent=''; }
+function doLogout(){ CU=null; localStorage.removeItem('guntae_cu'); g('login-wrap').style.display='flex'; g('app').style.display='none'; g('inp-name').value=''; g('inp-pw').value=''; g('lerr').textContent=''; }
 g('btn-logout').addEventListener('click', doLogout);
 
 /* ── 비밀번호 변경 ── */
@@ -2694,14 +2746,17 @@ function calcLeave(){
   var wd=0, wh=0;
   if(u==='day'){
     var s=g('la-s').value, e=g('la-e').value;
-    /* 단일 날짜 주말/공휴일 경고 */
+    /* 병가가 아닐 때만 주말/공휴일 경고 */
     var laWarn=g('la-date-warn');
     if(laWarn){
-      if(s && s===e && isNW(s)) laWarn.style.display='';
-      else if(s && !e && isNW(s)) laWarn.style.display='';
+      if(t!=='병가' && s && s===e && isNW(s)) laWarn.style.display='';
+      else if(t!=='병가' && s && !e && isNW(s)) laWarn.style.display='';
       else laWarn.style.display='none';
     }
-    if(s&&e&&s<=e) wd=wdays(s,e); g('la-use').textContent=wd+'\uc77c';
+    if(s&&e&&s<=e){
+      wd = (t==='병가') ? sldays(s,e) : wdays(s,e);
+    }
+    g('la-use').textContent=wd+'일';
   }
   else if(u==='half'){ wd=0.5; g('la-use').textContent='0.5\uc77c'; }
   else {
@@ -2742,9 +2797,15 @@ g('btn-la').addEventListener('click', function(){
     sd=g('la-s').value; ed=g('la-e').value;
     if(!sd||!ed){ toast('날짜를 입력해 주세요.','wt'); return; }
     if(sd>ed){ toast('종료일이 시작일보다 빠릅니다.','wt'); return; }
-    /* 단일 날짜인 경우 주말/공휴일 직접 차단 */
-    if(sd===ed && isNW(sd)){ toast('주말·공휴일은 신청할 수 없습니다.','wt'); return; }
-    wd=wdays(sd,ed); if(wd===0){ toast('선택 기간에 근무일이 없습니다.','wt'); return; }
+    if(t==='병가'){
+      /* 병가: 달력일수 30일 이상→주말포함, 29일 이하→근무일만 */
+      wd=sldays(sd,ed);
+      if(alldays(sd,ed)>60){ toast('병가는 최대 60일까지 신청 가능합니다.','wt'); return; }
+    } else {
+      /* 기타: 근무일만 계산, 주말/공휴일 차단 */
+      if(sd===ed && isNW(sd)){ toast('주말·공휴일은 신청할 수 없습니다.','wt'); return; }
+      wd=wdays(sd,ed); if(wd===0){ toast('선택 기간에 근무일이 없습니다.','wt'); return; }
+    }
     var dup=leaves.filter(function(r){ if(String(r.empId)!==String(CU.id)||r.status==='반려') return false; return r.sd<=ed && (r.ed||r.sd)>=sd; });
     if(dup.length){ toast('이미 신청된 휴가와 날짜가 중복됩니다. ('+fmtD(dup[0].sd)+')','er'); return; }
   } else if(u==='half'){
